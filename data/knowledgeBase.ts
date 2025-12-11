@@ -1,0 +1,68 @@
+export const MATERIALS_DB = [
+  { name: "Cotton (Conventional)", carbonPerKg: 21.0, waterPerKg: 10000, score: 5 },
+  { name: "Cotton (Organic)", carbonPerKg: 3.8, waterPerKg: 2400, score: 9 },
+  { name: "Polyester (Virgin)", carbonPerKg: 9.5, waterPerKg: 100, score: 3 },
+  { name: "Polyester (Recycled)", carbonPerKg: 3.5, waterPerKg: 50, score: 8 },
+  { name: "Tencel/Lyocell", carbonPerKg: 3.0, waterPerKg: 150, score: 9 },
+  { name: "Wool", carbonPerKg: 13.0, waterPerKg: 120, score: 6 },
+  { name: "Denim", carbonPerKg: 33.4, waterPerKg: 3000, score: 5 },
+  { name: "Nylon", carbonPerKg: 15.0, waterPerKg: 200, score: 4 }
+];
+
+export const BRANDS_DB: Record<string, { ethics: number; transparency: number; label: string }> = {
+  "PATAGONIA": { ethics: 95, transparency: 90, label: "Sustainability Leader" },
+  "H&M": { ethics: 50, transparency: 70, label: "Fast Fashion (Improving)" },
+  "SHEIN": { ethics: 10, transparency: 10, label: "Ultra Fast Fashion" },
+  "LEVI'S": { ethics: 70, transparency: 60, label: "Good" },
+  "ZARA": { ethics: 40, transparency: 50, label: "Fast Fashion" },
+  "REFORMATION": { ethics: 85, transparency: 80, label: "Eco-Conscious" }
+};
+
+export const PRODUCTS_DB: Record<string, any> = {
+  "123456789": {
+    name: "Classic Organic Tee",
+    brand: "Patagonia",
+    materials: "100% Organic Cotton",
+    weightKg: 0.2,
+    carbonFootprint: "0.8kg CO2e",
+    overallScore: 92,
+    summary: "A simplified example from the local database.",
+    breakdown: { material: 95, ethics: 95, production: 90, longevity: 90, transparency: 90 },
+    certifications: ["GOTS", "Fair Trade"],
+    waterUsage: { saved: 500, comparison: "50 days of drinking water" },
+    alternatives: []
+  }
+};
+
+// Mock alternatives with high quality images and real links
+export interface AlternativeProduct {
+  name: string;
+  brand: string;
+  image: string;
+  url: string;
+}
+
+export const MOCK_ALTERNATIVES: Record<string, AlternativeProduct[]> = {
+  "shirt": [
+    { name: "Organic Hemp Tee", brand: "Patagonia", image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=500", url: "https://www.patagonia.com/" },
+    { name: "Recycled Cotton T-Shirt", brand: "For Days", image: "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80&w=500", url: "https://fordays.com/" }
+  ],
+  "pants": [
+    { name: "Circular Denim", brand: "Mud Jeans", image: "https://images.unsplash.com/photo-1542272617-08f08630329e?auto=format&fit=crop&q=80&w=500", url: "https://mudjeans.eu/" },
+    { name: "Hemp Trousers", brand: "Thought", image: "https://images.unsplash.com/photo-1584370848010-d7fe6bc767ec?auto=format&fit=crop&q=80&w=500", url: "https://www.wearethought.com/" }
+  ],
+  "jacket": [
+    { name: "Recycled Down Jacket", brand: "Cotopaxi", image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&q=80&w=500", url: "https://www.cotopaxi.com/" },
+    { name: "Vintage Denim Jacket", brand: "Beyond Retro", image: "https://images.unsplash.com/photo-1611312449408-fcece27cdbb7?auto=format&fit=crop&q=80&w=500", url: "https://www.beyondretro.com/" }
+  ],
+  "default": [
+     { name: "Thrifted Find", brand: "Depop", image: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&q=80&w=500", url: "https://www.depop.com/" },
+     { name: "Rental Piece", brand: "Rent the Runway", image: "https://images.unsplash.com/photo-1566206091558-7f218b696731?auto=format&fit=crop&q=80&w=500", url: "https://www.renttherunway.com/" }
+  ]
+};
+
+export const getEnrichedAlternatives = (keyword: string) => {
+    // Simple loose matching
+    const key = Object.keys(MOCK_ALTERNATIVES).find(k => keyword.toLowerCase().includes(k)) || "default";
+    return MOCK_ALTERNATIVES[key];
+};
