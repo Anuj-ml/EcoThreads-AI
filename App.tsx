@@ -1,10 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, ArrowRight, ScanLine, Barcode, History, AlertCircle, X, Moon, Sun, Loader2 } from 'lucide-react';
+import { Camera, Upload, ArrowRight, ScanLine, Barcode, History, AlertCircle, X, Moon, Sun, Loader2, Zap, Leaf } from 'lucide-react';
 import { AppState, AnalysisResult, LocalAIResult, HistoryItem } from './types';
 import { classifyImage } from './services/tensorFlowService';
 import { extractTextFromImage } from './services/ocrService';
-import { analyzeSustainability } from './services/geminiService';
+import { analyzeSustainability, analyzeSustainabilityLocal } from './services/geminiService';
 import { getGamificationProfile } from './services/storageService';
 import { AnalysisLoader } from './components/AnalysisLoader';
 import { ResultsDashboard } from './components/ResultsDashboard';
@@ -21,11 +21,28 @@ export const App = () => {
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // For Camera Capture
+  const [isUploading, setIsUploading] = useState(false); // For File Upload
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  
+  // Scanning overlay state
+  const [scanGuidance, setScanGuidance] = useState<{text: string, color: string}>({ text: "Searching...", color: "border-white/30" });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Connectivity Listener
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Dark Mode Effect
   useEffect(() => {
@@ -35,6 +52,22 @@ export const App = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
+
+  // Scan Guidance Simulation
+  useEffect(() => {
+    if (appState === AppState.SCANNING && !showBarcodeScanner) {
+        // Reset
+        setScanGuidance({ text: "Align subject...", color: "border-white/30" });
+        
+        // Simulate detection sequence
+        const timers = [
+            setTimeout(() => setScanGuidance({ text: "Analyzing lighting...", color: "border-white/50" }), 1000),
+            setTimeout(() => setScanGuidance({ text: "Subject detected", color: "border-yellow-400/60" }), 2500),
+            setTimeout(() => setScanGuidance({ text: "Hold steady", color: "border-green-400/80" }), 4000),
+        ];
+        return () => timers.forEach(clearTimeout);
+    }
+  }, [appState, showBarcodeScanner]);
 
   // Stop camera stream
   const stopStream = () => {
@@ -96,88 +129,152 @@ export const App = () => {
     }
   };
 
-  const enhanceImage = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
-    ctx.filter = 'contrast(1.2) brightness(1.1) saturate(1.1)';
+  // Image Processing Pipeline
+  const applyImageEnhancements = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    // 1. Sharpening Convolution (Kernel: [[0,-1,0], [-1,5,-1], [0,-1,0]])
+    // This runs on CPU, so we only do it for reasonable image sizes.
+    const imgData = ctx.getImageData(0, 0, width, height);
+    const data = imgData.data;
+    const src = new Uint8ClampedArray(data); // Create copy for reading
+    const stride = width * 4;
+
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        
+        // Apply kernel to RGB
+        for (let c = 0; c < 3; c++) {
+          const val = (5 * src[idx + c]) 
+            - src[idx - 4 + c]          // Left
+            - src[idx + 4 + c]          // Right
+            - src[idx - stride + c]     // Up
+            - src[idx + stride + c];    // Down
+            
+          data[idx + c] = Math.min(255, Math.max(0, val));
+        }
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
   };
 
-  const captureImage = () => {
+  const getProcessedImage = async (source: HTMLVideoElement | HTMLImageElement): Promise<{ blob: Blob, base64: string }> => {
+    const canvas = document.createElement('canvas');
+    // Limit resolution to max 1080px width/height to ensure performance during convolution
+    const maxDim = 1080;
+    let w = 'videoWidth' in source ? source.videoWidth : source.naturalWidth;
+    let h = 'videoWidth' in source ? source.videoHeight : source.naturalHeight;
+    
+    const scale = Math.min(1, maxDim / Math.max(w, h));
+    w = Math.floor(w * scale);
+    h = Math.floor(h * scale);
+    
+    canvas.width = w;
+    canvas.height = h;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error("Failed to get canvas context");
+
+    // 1. Draw with CSS Filters (GPU accelerated contrast/brightness)
+    ctx.filter = 'contrast(1.2) brightness(1.1) saturate(1.1)';
+    ctx.drawImage(source, 0, 0, w, h);
+    ctx.filter = 'none'; // Reset filter
+
+    // 2. Apply CPU-based Sharpening
+    applyImageEnhancements(ctx, w, h);
+
+    return new Promise((resolve, reject) => {
+       const base64 = canvas.toDataURL('image/jpeg', 0.9);
+       canvas.toBlob(blob => {
+         if (blob) resolve({ blob, base64 });
+         else reject(new Error("Canvas conversion failed"));
+       }, 'image/jpeg', 0.9);
+    });
+  };
+
+  const captureImage = async () => {
     if (videoRef.current && videoRef.current.readyState === 4) {
-      setIsProcessing(true); // Start loading spinner
-      const video = videoRef.current;
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        enhanceImage(canvas, ctx);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
-            processImage(file);
-          } else {
-            setError("Failed to capture image frame.");
-            setIsProcessing(false);
-          }
-        }, 'image/jpeg', 0.9);
+      setIsProcessing(true);
+      try {
+        const { blob, base64 } = await getProcessedImage(videoRef.current);
+        // Create a File object from Blob to mimic file upload structure for consistency
+        const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+        processImagePipeline(file, base64);
+      } catch (e: any) {
+        setError(e.message);
+        setIsProcessing(false);
       }
     } else {
         setError("Camera not ready. Please wait a moment.");
     }
   };
 
-  const processImage = async (file: File) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setIsUploading(true);
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+         if (event.target?.result) {
+            const img = new Image();
+            img.src = event.target.result as string;
+            await new Promise(r => img.onload = r);
+            
+            // Enhance uploaded image as well
+            const { blob, base64 } = await getProcessedImage(img);
+            const processedFile = new File([blob], file.name, { type: file.type });
+            processImagePipeline(processedFile, base64);
+         }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const processImagePipeline = async (file: File, base64data: string) => {
     stopStream();
     setAppState(AppState.ANALYZING);
     setAnalysisStage('vision');
     setError(null);
-    setIsProcessing(false); // Stop capture spinner, transitioning to analysis loader
+    setIsProcessing(false);
+    setIsUploading(false);
+    setCurrentImageThumbnail(base64data);
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onloadend = async () => {
-        const base64data = reader.result as string;
-        setCurrentImageThumbnail(base64data);
+    try {
+        // 1. TF.js Classification (Runs locally)
+        const imgElement = document.createElement('img');
+        imgElement.src = base64data;
+        await new Promise((resolve) => { imgElement.onload = resolve; });
+        
+        const classifications = await classifyImage(imgElement);
+        setAnalysisStage('ocr');
 
-        if (!navigator.onLine) {
-            setError("You are offline. Please check your internet connection.");
-            setAppState(AppState.SCANNING);
-            return;
-        }
+        // 2. OCR (Runs locally)
+        const ocrText = await extractTextFromImage(file);
+        setAnalysisStage('fusion');
 
-        try {
-            // 1. TF.js
-            const imgElement = document.createElement('img');
-            imgElement.src = base64data;
-            await new Promise((resolve) => { imgElement.onload = resolve; });
-            
-            const classifications = await classifyImage(imgElement);
-            setAnalysisStage('ocr');
+        const localAI: LocalAIResult = { classification: classifications, ocrText };
 
-            // 2. OCR
-            const ocrText = await extractTextFromImage(file);
-            setAnalysisStage('fusion');
-
-            // 3. Gemini
-            const localAI: LocalAIResult = { classification: classifications, ocrText };
+        // 3. Analysis (Cloud vs Local)
+        if (navigator.onLine) {
             const finalResult = await analyzeSustainability(base64data, localAI);
-            
             setResult(finalResult);
-            setAnalysisStage('complete');
-            setAppState(AppState.RESULTS);
-        } catch (e: any) {
-            console.error(e);
-            const msg = e.message || "An unexpected error occurred during analysis.";
-            setError(msg);
-            setAppState(AppState.SCANNING);
+        } else {
+            // Offline Fallback
+            console.log("Offline mode detected. Running heuristic analysis.");
+            const localResult = analyzeSustainabilityLocal(localAI);
+            setResult(localResult);
+            // Simulate processing time
+            await new Promise(r => setTimeout(r, 1500)); 
         }
-    };
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      processImage(e.target.files[0]);
+        
+        setAnalysisStage('complete');
+        setAppState(AppState.RESULTS);
+    } catch (e: any) {
+        console.error(e);
+        const msg = e.message || "An unexpected error occurred during analysis.";
+        setError(msg);
+        setAppState(AppState.SCANNING);
+        setIsUploading(false);
+        setIsProcessing(false);
     }
   };
 
@@ -200,55 +297,84 @@ export const App = () => {
     );
   };
 
+  // EXPERT LANDING PAGE DESIGN
   const renderLanding = () => (
-    <div className="flex flex-col h-screen bg-cream dark:bg-stone-900 transition-colors duration-300 relative overflow-hidden">
+    <div className="flex flex-col h-screen bg-cream dark:bg-stone-950 transition-colors duration-500 relative overflow-hidden">
         {renderError()}
+        
         {/* Toggle Dark Mode */}
         <button 
             onClick={() => setDarkMode(!darkMode)}
-            className="absolute top-6 right-6 z-20 p-2 rounded-full bg-white/20 hover:bg-white/40 dark:text-white transition-colors"
+            className="absolute top-6 right-6 z-30 p-2.5 rounded-full bg-white/10 hover:bg-black/5 dark:hover:bg-white/10 dark:text-white transition-all backdrop-blur-sm border border-transparent hover:border-stone-200 dark:hover:border-stone-700"
         >
-            {darkMode ? <Sun size={24} /> : <Moon size={24} />}
+            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
-        {/* Decorative Elements */}
-        <div className="absolute top-10 right-10 w-20 h-20 bg-terracotta rounded-full opacity-20 blur-xl"></div>
-        <div className="absolute bottom-20 left-10 w-32 h-32 bg-periwinkle rounded-full opacity-20 blur-xl"></div>
+        {/* Dynamic Background */}
+        <div className="absolute inset-0 pointer-events-none">
+             <div className="absolute -top-20 -right-20 w-96 h-96 bg-terracotta/20 dark:bg-terracotta/10 rounded-full blur-[100px] animate-pulse"></div>
+             <div className="absolute top-1/3 -left-20 w-72 h-72 bg-periwinkle/30 dark:bg-periwinkle/10 rounded-full blur-[80px]"></div>
+             <div className="absolute bottom-0 right-0 w-full h-1/2 bg-gradient-to-t from-white via-white/0 to-transparent dark:from-stone-950 dark:via-stone-950/0"></div>
+        </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-8 z-10 w-full max-w-md mx-auto">
-            {/* Gamification Hub */}
-            <div className="w-full mb-8">
+        {/* Hero Section */}
+        <div className="flex-1 flex flex-col items-center relative z-10 pt-16 px-6">
+            
+            {/* Logo Mark */}
+            <div className="mb-8 flex items-center gap-2">
+                <div className="w-8 h-8 bg-ink dark:bg-white rounded-tr-xl rounded-bl-xl flex items-center justify-center">
+                    <Leaf size={16} className="text-white dark:text-ink" />
+                </div>
+                <span className="font-bold text-lg tracking-widest uppercase text-ink dark:text-white">EcoThreads</span>
+            </div>
+
+            {/* Main Headline */}
+            <div className="text-center mb-8 max-w-sm relative">
+                <h1 className="text-6xl font-light text-ink dark:text-white leading-[0.9] tracking-tighter mb-4">
+                    Fashion,<br />
+                    <span className="font-bold font-serif italic text-terracotta">Reimagined.</span>
+                </h1>
+                <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed">
+                    The AI-powered sustainability lens for your modern wardrobe.
+                </p>
+                {isOffline && (
+                    <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-stone-100 dark:bg-stone-800 rounded-full text-xs font-bold text-gray-500">
+                        <Zap size={12} className="text-orange-400" /> Offline Mode Active
+                    </div>
+                )}
+            </div>
+
+            {/* Interactive Scanner Trigger */}
+            <div className="relative group cursor-pointer mb-auto" onClick={handleStart}>
+                 <div className="absolute inset-0 bg-terracotta rounded-full blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-500 scale-110"></div>
+                 <div className="relative w-64 h-64 rounded-full overflow-hidden border-[6px] border-white dark:border-stone-800 shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]">
+                     <img src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&q=80&w=600" className="w-full h-full object-cover" alt="Fashion Texture" />
+                     <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
+                     <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 text-white">
+                            <ScanLine size={32} />
+                        </div>
+                     </div>
+                 </div>
+            </div>
+            
+            {/* Gamification Widget (Mini) */}
+            <div className="w-full max-w-sm mb-8 transform hover:-translate-y-1 transition-transform duration-300">
                <GamificationHub profile={getGamificationProfile()} />
             </div>
 
-            <div className="text-center mb-8">
-                <h1 className="text-5xl font-bold text-ink dark:text-white mb-2 transition-colors">EcoThreads</h1>
-                <h2 className="text-xl font-medium text-terracotta">Scan for Earth</h2>
-            </div>
-            
-            <div className="relative w-56 h-56 mb-10 group cursor-pointer mx-auto" onClick={handleStart}>
-                 <img src="https://picsum.photos/id/445/500/500" className="w-full h-full object-cover rounded-full border-4 border-white dark:border-stone-800 shadow-xl transition-colors" alt="Fashion" />
-                 <div className="absolute -bottom-4 -right-4 bg-white dark:bg-stone-800 p-4 rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <ScanLine className="w-8 h-8 text-terracotta" />
-                 </div>
-            </div>
-
-            <p className="text-gray-600 dark:text-gray-400 mb-10 max-w-xs text-lg transition-colors text-center mx-auto">
-                Instantly analyze your wardrobe's impact via 
-                <span className="font-bold text-ink dark:text-white"> AI Fusion & Barcodes</span>.
-            </p>
-
-            <div className="flex gap-4 justify-center">
+            {/* Action Bar */}
+            <div className="w-full max-w-md grid grid-cols-4 gap-3 mb-8">
                 <button 
                     onClick={handleStart}
-                    className="bg-ink dark:bg-white text-white dark:text-ink px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:scale-105 transition-all flex items-center gap-3"
+                    className="col-span-3 bg-ink dark:bg-white text-white dark:text-ink py-5 rounded-[2rem] font-bold text-lg shadow-xl shadow-ink/20 dark:shadow-white/10 hover:shadow-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
                 >
-                    Start Scanning <ArrowRight size={20} />
+                    Start Scan <ArrowRight size={20} />
                 </button>
                 
                 <button 
                     onClick={() => setAppState(AppState.HISTORY)}
-                    className="bg-white dark:bg-stone-800 text-ink dark:text-white p-4 rounded-full shadow-lg hover:scale-105 transition-all border border-stone-100 dark:border-stone-700"
+                    className="col-span-1 bg-white dark:bg-stone-800 text-ink dark:text-white rounded-[2rem] flex items-center justify-center shadow-lg border border-stone-100 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors"
                     aria-label="History"
                 >
                     <History size={24} />
@@ -276,8 +402,22 @@ export const App = () => {
                 <div className="absolute top-0 left-0 w-full h-[15%] bg-black/60 backdrop-blur-sm"></div>
                 <div className="absolute bottom-0 left-0 w-full h-[15%] bg-black/60 backdrop-blur-sm"></div>
                 
-                {/* Scan Box */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 border border-white/30 rounded-3xl overflow-hidden shadow-2xl">
+                {/* Dynamic Scan Box */}
+                <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 border-[3px] rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 ${scanGuidance.color}`}>
+                    
+                    {/* Grid Overlay for alignment cues */}
+                    <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-30">
+                        <div className="border-r border-b border-white/20"></div>
+                        <div className="border-r border-b border-white/20"></div>
+                        <div className="border-b border-white/20"></div>
+                        <div className="border-r border-b border-white/20"></div>
+                        <div className="border-r border-b border-white/20"></div>
+                        <div className="border-b border-white/20"></div>
+                        <div className="border-r border-white/20"></div>
+                        <div className="border-r border-white/20"></div>
+                        <div></div>
+                    </div>
+
                     {/* Animated Scan Line */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-terracotta/80 shadow-[0_0_20px_rgba(217,93,57,0.8)] animate-scan"></div>
                     
@@ -288,9 +428,17 @@ export const App = () => {
                     <div className="absolute bottom-4 right-4 w-6 h-6 border-b-4 border-r-4 border-white rounded-br-lg"></div>
                 </div>
                 
-                <p className="absolute bottom-[18%] left-0 right-0 text-center text-white/90 text-sm font-medium tracking-wide drop-shadow-md">
-                    Align garment within frame
+                <p className="absolute bottom-[18%] left-0 right-0 text-center text-white/90 text-sm font-medium tracking-wide drop-shadow-md transition-all duration-300">
+                    {scanGuidance.text}
                 </p>
+                
+                {isOffline && (
+                     <div className="absolute top-[18%] left-0 right-0 text-center">
+                        <span className="inline-flex items-center gap-2 px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-xs font-bold text-white/80 border border-white/10">
+                            <Zap size={10} className="text-orange-400" /> Offline Mode
+                        </span>
+                    </div>
+                )}
             </div>
         </div>
 
@@ -327,10 +475,15 @@ export const App = () => {
 
              <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="p-4 rounded-full bg-stone-800 text-white hover:bg-stone-700 transition-colors flex flex-col items-center gap-1 active:scale-95"
+                disabled={isUploading}
+                className="p-4 rounded-full bg-stone-800 text-white hover:bg-stone-700 transition-colors flex flex-col items-center gap-1 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 title="Upload Image"
             >
-                <Upload size={24} />
+                {isUploading ? (
+                     <Loader2 size={24} className="animate-spin text-terracotta" />
+                ) : (
+                     <Upload size={24} />
+                )}
             </button>
         </div>
         

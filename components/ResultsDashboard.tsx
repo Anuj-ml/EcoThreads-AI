@@ -1,11 +1,12 @@
+
 import React, { useEffect, useState } from 'react';
-import { AnalysisResult, RecyclingResult } from '../types';
-import { getEnrichedAlternatives, AlternativeProduct } from '../data/knowledgeBase';
-import { findRecyclingCenters } from '../services/geminiService';
+import { AnalysisResult, RecyclingResult, AlternativeProduct } from '../types';
+import { findRecyclingCenters, searchSustainableAlternatives } from '../services/geminiService';
 import { 
   Share2, RotateCcw, Droplets, Wind, ExternalLink, Leaf, Shirt, 
   Thermometer, Waves, Scissors, HeartHandshake, Calculator, MapPin, 
-  Loader2, ArrowRight, Star, Navigation
+  Loader2, ArrowRight, Star, Navigation, Zap, Car, Coffee, Smartphone,
+  ShoppingBag
 } from 'lucide-react';
 import { saveToHistory, addPoints } from '../services/storageService';
 
@@ -17,11 +18,14 @@ interface ResultsDashboardProps {
 }
 
 export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thumbnail, onReset, isHistoryView }) => {
-  const [enrichedAlternatives, setEnrichedAlternatives] = useState<AlternativeProduct[]>([]);
+  const [alternatives, setAlternatives] = useState<AlternativeProduct[]>([]);
+  const [loadingAlternatives, setLoadingAlternatives] = useState(false);
+  
   const [activeTab, setActiveTab] = useState<'impact' | 'care' | 'value'>('impact');
   
   // CPW State
   const [price, setPrice] = useState<string>('');
+  const [lifespan, setLifespan] = useState<number>(30);
   const [cpw, setCpw] = useState<number | null>(null);
 
   // Recycling State
@@ -37,13 +41,39 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
       saveToHistory(result, thumbnail);
       triggerPointsToast(50, "Scan Complete");
     }
-    const keyword = result.alternatives[0]?.imagePlaceholder || "default";
-    setEnrichedAlternatives(getEnrichedAlternatives(keyword));
+
+    // Initialize lifespan from result
+    if (result.estimatedLifespan) {
+        setLifespan(result.estimatedLifespan);
+    }
+
+    // Fetch Alternatives dynamically
+    const fetchAlternatives = async () => {
+        setLoadingAlternatives(true);
+        try {
+             // Construct a search query based on the analysis
+             const query = `Sustainable ${result.mainMaterial} ${result.summary.split(' ')[0] || 'clothing'}`;
+             const data = await searchSustainableAlternatives(query);
+             setAlternatives(data);
+        } catch (e) {
+            console.error("Failed to load alternatives", e);
+        } finally {
+            setLoadingAlternatives(false);
+        }
+    };
+
+    if (!isHistoryView) {
+        fetchAlternatives();
+    } else {
+        // If history view, we might not have stored the rich alternatives, 
+        // so we could fetch them again or just skip. 
+        // For now, let's fetch them to ensure the view is consistent.
+        fetchAlternatives();
+    }
+
   }, [result, thumbnail, isHistoryView]);
 
   const triggerPointsToast = (amount: number, label: string) => {
-    // Only add points if it's not a history view event re-triggering (handled by effect for initial scan)
-    // For manual actions like clicking links, we call this directly.
     if (amount > 0) {
         addPoints(amount);
         setPointsToast({ show: true, amount, label });
@@ -58,9 +88,15 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
   const calculateCPW = () => {
     if (!price || isNaN(parseFloat(price))) return;
     const p = parseFloat(price);
-    const estimatedWears = result.estimatedLifespan || 30;
-    setCpw(p / estimatedWears);
+    setCpw(p / lifespan);
   };
+
+  // Re-calculate if lifespan changes while price is present
+  useEffect(() => {
+      if (price && !isNaN(parseFloat(price)) && cpw !== null) {
+          calculateCPW();
+      }
+  }, [lifespan]);
 
   const handleLocateRecycling = () => {
     if (!navigator.geolocation) {
@@ -90,10 +126,27 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
   };
 
   // Helper for Score Ring
-  const radius = 36;
+  const radius = 40;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - ((result.overallScore / 100) * circumference);
   const scoreColor = result.overallScore > 75 ? '#8A9A5B' : result.overallScore > 40 ? '#EAB308' : '#D95D39';
+  
+  // Star Rating Calculation
+  const starCount = Math.round((result.overallScore / 100) * 5);
+
+  // Helper for Carbon Context
+  const getCarbonEquivalent = () => {
+    // Parse value (e.g. "12.5 kg CO2e" -> 12.5)
+    const val = parseFloat(result.carbonFootprint.value) || 10;
+    return [
+        { icon: Smartphone, label: "Phone Charges", value: Math.round(val * 120).toLocaleString() }, // ~8g per charge
+        { icon: Car, label: "Miles Driven", value: (val * 2.5).toFixed(1) }, // ~400g per mile
+        { icon: Coffee, label: "Kettles Boiled", value: Math.round(val * 15).toLocaleString() }, // ~15g per boil (low estimate)
+        { icon: Zap, label: "LED Hours", value: Math.round(val * 200).toLocaleString() } // ~5g per hour
+    ];
+  };
+
+  const carbonBreakdown = result.carbonFootprint.breakdown || { material: 50, manufacturing: 25, transport: 15, use: 10 };
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-stone-950 overflow-y-auto animate-fade-in transition-colors duration-300 relative">
@@ -111,50 +164,59 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
       )}
 
       {/* Premium Hero Section */}
-      <div className="relative h-80 w-full flex-shrink-0 bg-stone-900 rounded-b-[2.5rem] overflow-hidden shadow-2xl z-10">
-        <img src={thumbnail} alt="Analyzed Item" className="w-full h-full object-cover opacity-60 mix-blend-overlay" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-stone-900/40 to-stone-900/90" />
+      <div className="relative h-[22rem] w-full flex-shrink-0 bg-stone-900 rounded-b-[3rem] overflow-hidden shadow-2xl z-10">
+        <img src={thumbnail} alt="Analyzed Item" className="w-full h-full object-cover opacity-50 mix-blend-overlay blur-sm scale-110" />
+        <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-900/60 to-transparent" />
         
-        <div className="absolute inset-0 flex flex-col justify-end p-8 pb-10">
-            <div className="flex justify-between items-end">
-                <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-bold tracking-widest text-white uppercase border border-white/20">
-                            Sustainability Report
-                        </span>
-                    </div>
-                    <h1 className="text-3xl font-bold text-white mb-1 leading-tight max-w-[200px] truncate">
-                        {result.breakdown.material > 80 ? "Eco-Friendly Choice" : "Conventional Item"}
-                    </h1>
-                    <p className="text-stone-300 text-sm">{result.summary.split('.')[0]}.</p>
-                </div>
-                
-                {/* Animated Score Ring */}
-                <div className="relative w-24 h-24 flex items-center justify-center bg-stone-800/50 backdrop-blur-xl rounded-full border border-white/10 shadow-xl">
-                    <svg className="transform -rotate-90 w-24 h-24">
-                        <circle cx="48" cy="48" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent" className="text-stone-700" />
+        <div className="absolute inset-0 flex flex-col items-center justify-end p-8 pb-12">
+            
+            {/* Prominent Eco-Score Display */}
+            <div className="relative mb-4 flex flex-col items-center">
+                 {/* Score Ring */}
+                <div className="relative w-28 h-28 flex items-center justify-center bg-stone-800/40 backdrop-blur-xl rounded-full border border-white/10 shadow-2xl mb-2">
+                    <svg className="transform -rotate-90 w-28 h-28">
+                        <circle cx="56" cy="56" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent" className="text-stone-700/50" />
                         <circle 
-                            cx="48" cy="48" r={radius} 
+                            cx="56" cy="56" r={radius} 
                             stroke={scoreColor} 
                             strokeWidth="6" 
                             fill="transparent" 
                             strokeDasharray={circumference} 
                             strokeDashoffset={strokeDashoffset} 
                             strokeLinecap="round"
-                            className="transition-all duration-1000 ease-out"
+                            className="transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(255,255,255,0.3)]"
                         />
                     </svg>
-                    <div className="absolute flex flex-col items-center">
-                        <span className="text-3xl font-bold text-white leading-none">{result.overallScore}</span>
+                    <div className="absolute flex flex-col items-center justify-center">
+                        <span className="text-4xl font-black text-white leading-none tracking-tight">{result.overallScore}</span>
                     </div>
                 </div>
+
+                {/* Star Rating */}
+                <div className="flex gap-1 mb-2">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                        <Star 
+                            key={s} 
+                            size={16} 
+                            className={`${s <= starCount ? 'text-yellow-400 fill-yellow-400' : 'text-stone-600'} drop-shadow-md`} 
+                        />
+                    ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-bold tracking-widest text-white uppercase border border-white/20">
+                         {result.mainMaterial || (result.breakdown.material > 80 ? "Eco-Friendly Choice" : "Conventional Item")}
+                    </span>
+                </div>
             </div>
+
+            <p className="text-stone-300 text-sm text-center max-w-xs leading-relaxed">{result.summary.split('.')[0]}.</p>
         </div>
       </div>
 
       {/* Floating Tab Bar */}
-      <div className="px-6 -mt-6 z-20 relative">
-        <div className="bg-white dark:bg-stone-800 p-1.5 rounded-2xl shadow-lg border border-stone-100 dark:border-stone-700 flex justify-between gap-1">
+      <div className="px-6 -mt-8 z-20 relative">
+        <div className="bg-white dark:bg-stone-800 p-1.5 rounded-2xl shadow-xl shadow-stone-900/10 border border-stone-100 dark:border-stone-700 flex justify-between gap-1">
             {['impact', 'care', 'value'].map((tab) => (
                 <button 
                     key={tab}
@@ -177,27 +239,53 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
         {activeTab === 'impact' && (
             <div className="animate-slide-up space-y-8">
                 
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Droplets size={48} className="text-blue-500" />
+                {/* Expanded Carbon Footprint Section */}
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 relative overflow-hidden">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-xl text-orange-500">
+                            <Wind size={24} />
                         </div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Water Saved</p>
-                        <p className="text-2xl font-black text-ink dark:text-white mb-2">{result.waterUsage.saved}L</p>
-                        <div className="text-[10px] text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-1 rounded-lg inline-block">
-                            {result.waterUsage.comparison}
+                        <div>
+                            <h3 className="font-bold text-ink dark:text-white text-lg">Carbon Footprint</h3>
+                            <p className="text-xs text-gray-500">Emission Lifecycle Analysis</p>
+                        </div>
+                        <div className="ml-auto text-right">
+                             <p className="text-2xl font-black text-ink dark:text-white">{result.carbonFootprint.value}</p>
                         </div>
                     </div>
 
-                    <div className="bg-white dark:bg-stone-900 p-5 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 relative overflow-hidden group">
-                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Wind size={48} className="text-orange-500" />
+                    {/* Breakdown Chart */}
+                    <div className="mb-6">
+                        <div className="flex justify-between text-[10px] text-gray-400 font-bold uppercase mb-2">
+                            <span>Lifecycle Breakdown</span>
                         </div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Carbon Print</p>
-                        <p className="text-2xl font-black text-ink dark:text-white mb-2">{result.carbonFootprint.value}</p>
-                        <div className="text-[10px] text-orange-600 bg-orange-50 dark:bg-orange-900/30 dark:text-orange-300 px-2 py-1 rounded-lg inline-block">
-                            {result.carbonFootprint.comparison}
+                        <div className="h-4 w-full flex rounded-full overflow-hidden">
+                            <div style={{ width: `${carbonBreakdown.material}%` }} className="bg-orange-400" title="Material"></div>
+                            <div style={{ width: `${carbonBreakdown.manufacturing}%` }} className="bg-yellow-400" title="Manufacturing"></div>
+                            <div style={{ width: `${carbonBreakdown.transport}%` }} className="bg-blue-400" title="Transport"></div>
+                            <div style={{ width: `${carbonBreakdown.use}%` }} className="bg-green-400" title="Use Phase"></div>
+                        </div>
+                        <div className="flex gap-3 mt-3 justify-center flex-wrap">
+                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-400"></div><span className="text-[10px] text-gray-500">Material</span></div>
+                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-yellow-400"></div><span className="text-[10px] text-gray-500">Mfg</span></div>
+                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-400"></div><span className="text-[10px] text-gray-500">Transport</span></div>
+                             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-400"></div><span className="text-[10px] text-gray-500">Use</span></div>
+                        </div>
+                    </div>
+
+                    {/* Real World Impact Grid */}
+                    <div className="bg-gray-50 dark:bg-stone-800/50 rounded-2xl p-4">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-3 text-center">Equivalent To</p>
+                        <div className="grid grid-cols-4 gap-2">
+                            {getCarbonEquivalent().map((item, idx) => (
+                                <div key={idx} className="flex flex-col items-center text-center">
+                                    <div className="w-8 h-8 rounded-full bg-white dark:bg-stone-700 flex items-center justify-center text-gray-400 mb-1 shadow-sm">
+                                        <item.icon size={14} />
+                                    </div>
+                                    <span className="text-xs font-bold text-ink dark:text-white">{item.value}</span>
+                                    <span className="text-[8px] text-gray-400 leading-tight">{item.label}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -224,41 +312,63 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                 {/* Sustainable Alternatives */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-lg text-ink dark:text-white">Greener Choices</h3>
+                        <h3 className="font-bold text-lg text-ink dark:text-white flex items-center gap-2">
+                             Greener Choices
+                             <span className="text-xs font-normal text-gray-400">(Live Search)</span>
+                        </h3>
                         <span className="text-xs font-bold text-terracotta bg-terracotta/10 px-2 py-1 rounded-md">
                             Earn +20 pts
                         </span>
                     </div>
                     
-                    <div className="flex gap-4 overflow-x-auto pb-6 snap-x scrollbar-hide -mx-6 px-6">
-                        {enrichedAlternatives.map((alt, idx) => (
-                            <div key={idx} className="min-w-[260px] snap-center bg-white dark:bg-stone-900 rounded-2xl overflow-hidden shadow-sm border border-stone-100 dark:border-stone-800 group hover:shadow-md transition-all">
-                                <div className="h-40 relative overflow-hidden">
-                                    <img 
-                                        src={alt.image} 
-                                        alt={alt.name} 
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-                                    />
-                                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-bold text-ink flex items-center gap-1">
-                                        <Leaf size={10} className="text-sage" /> BETTER
+                    {loadingAlternatives ? (
+                        <div className="flex gap-4 overflow-x-auto pb-6 px-2">
+                             {[1,2,3].map(i => (
+                                 <div key={i} className="min-w-[260px] h-64 bg-gray-100 dark:bg-stone-800 rounded-2xl animate-pulse"></div>
+                             ))}
+                        </div>
+                    ) : alternatives.length > 0 ? (
+                        <div className="flex gap-4 overflow-x-auto pb-6 snap-x scrollbar-hide -mx-6 px-6">
+                            {alternatives.map((alt, idx) => (
+                                <div key={idx} className="min-w-[260px] snap-center bg-white dark:bg-stone-900 rounded-2xl overflow-hidden shadow-sm border border-stone-100 dark:border-stone-800 group hover:shadow-md transition-all">
+                                    <div className="h-40 relative overflow-hidden bg-gray-50 dark:bg-stone-800">
+                                        <img 
+                                            src={alt.image !== 'default' ? alt.image : `https://source.unsplash.com/random/400x300/?clothing,${encodeURIComponent(alt.name)}`} 
+                                            alt={alt.name} 
+                                            onError={(e) => {
+                                                // Fallback if image load fails
+                                                (e.target as HTMLImageElement).src = `https://placehold.co/400x300/EEE/31343C?text=${encodeURIComponent(alt.brand)}`;
+                                            }}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                                        />
+                                        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-bold text-ink flex items-center gap-1">
+                                            <Leaf size={10} className="text-sage" /> {alt.sustainabilityFeature || "Eco"}
+                                        </div>
+                                    </div>
+                                    <div className="p-4">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <h4 className="font-bold text-ink dark:text-white text-sm line-clamp-1 flex-1">{alt.name}</h4>
+                                            <span className="text-xs font-bold text-terracotta ml-2">{alt.price}</span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mb-4">{alt.brand}</p>
+                                        <a 
+                                            href={alt.url} 
+                                            target="_blank" 
+                                            rel="noreferrer"
+                                            onClick={handleAlternativeClick}
+                                            className="flex items-center justify-center w-full py-3 bg-stone-100 dark:bg-stone-800 hover:bg-ink hover:text-white dark:hover:bg-white dark:hover:text-ink rounded-xl text-xs font-bold transition-all gap-2"
+                                        >
+                                            <ShoppingBag size={14} /> Shop Now
+                                        </a>
                                     </div>
                                 </div>
-                                <div className="p-4">
-                                    <h4 className="font-bold text-ink dark:text-white mb-1">{alt.name}</h4>
-                                    <p className="text-xs text-gray-500 mb-4">{alt.brand}</p>
-                                    <a 
-                                        href={alt.url} 
-                                        target="_blank" 
-                                        rel="noreferrer"
-                                        onClick={handleAlternativeClick}
-                                        className="flex items-center justify-center w-full py-3 bg-stone-100 dark:bg-stone-800 hover:bg-ink hover:text-white dark:hover:bg-white dark:hover:text-ink rounded-xl text-xs font-bold transition-all gap-2"
-                                    >
-                                        View Product <ArrowRight size={14} />
-                                    </a>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="p-8 text-center bg-gray-50 dark:bg-stone-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-stone-800">
+                            <p className="text-sm text-gray-400">No specific alternatives found.</p>
+                        </div>
+                    )}
                 </div>
             </div>
         )}
@@ -273,7 +383,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                     <Shirt className="w-12 h-12 text-periwinkle mx-auto mb-4" />
                     <h3 className="text-xl font-bold text-ink dark:text-white mb-2">Smart Care Guide</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-300 max-w-xs mx-auto">
-                        Specific instructions extracted for {result.breakdown.material > 60 ? 'Natural Fibers' : 'Synthetic Blend'}
+                        Specific instructions extracted for {result.mainMaterial || (result.breakdown.material > 60 ? 'Natural Fibers' : 'Synthetic Blend')}
                     </p>
                  </div>
 
@@ -313,40 +423,66 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                         </div>
                     </div>
                     
-                    <div className="flex gap-3 mb-6">
-                        <div className="relative flex-1">
-                            <span className="absolute left-4 top-3.5 text-gray-400 font-bold">$</span>
-                            <input 
-                                type="number" 
-                                placeholder="Enter Price"
-                                value={price}
-                                onChange={(e) => setPrice(e.target.value)}
-                                className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-stone-800 border-none rounded-xl font-bold text-ink dark:text-white focus:ring-2 focus:ring-terracotta transition-all"
-                            />
+                    <div className="space-y-6">
+                        {/* Price Input */}
+                        <div className="flex gap-3">
+                            <div className="relative flex-1">
+                                <span className="absolute left-4 top-3.5 text-gray-400 font-bold">$</span>
+                                <input 
+                                    type="number" 
+                                    placeholder="Enter Price"
+                                    value={price}
+                                    onChange={(e) => setPrice(e.target.value)}
+                                    className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-stone-800 border-none rounded-xl font-bold text-ink dark:text-white focus:ring-2 focus:ring-terracotta transition-all"
+                                />
+                            </div>
+                            <button 
+                                onClick={calculateCPW}
+                                className="bg-ink dark:bg-white text-white dark:text-ink px-6 rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-transform"
+                            >
+                                Calculate
+                            </button>
                         </div>
-                        <button 
-                            onClick={calculateCPW}
-                            className="bg-ink dark:bg-white text-white dark:text-ink px-6 rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-transform"
-                        >
-                            Calculate
-                        </button>
-                    </div>
 
-                    {cpw !== null && (
-                        <div className="bg-gradient-to-br from-terracotta to-orange-600 rounded-2xl p-6 text-white relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
-                            <div className="relative z-10 flex justify-between items-end">
-                                <div>
-                                    <p className="text-white/80 text-xs font-bold uppercase mb-1">True Cost / Wear</p>
-                                    <p className="text-4xl font-black">${cpw.toFixed(2)}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-white/80 text-xs font-bold mb-1">Lifespan</p>
-                                    <p className="text-xl font-bold">{result.estimatedLifespan} Wears</p>
-                                </div>
+                        {/* Lifespan Slider */}
+                        <div>
+                             <label className="text-xs text-gray-500 font-bold uppercase mb-3 flex justify-between">
+                                <span>Estimated Lifespan</span>
+                                <span className="text-ink dark:text-white">{lifespan} Wears</span>
+                             </label>
+                             <input 
+                                type="range" 
+                                min="10" 
+                                max="300" 
+                                step="5"
+                                value={lifespan} 
+                                onChange={(e) => {
+                                    setLifespan(parseInt(e.target.value));
+                                }}
+                                className="w-full h-2 bg-gray-200 dark:bg-stone-700 rounded-lg appearance-none cursor-pointer accent-terracotta"
+                            />
+                            <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                                <span>Low Quality</span>
+                                <span>High Durability</span>
                             </div>
                         </div>
-                    )}
+
+                        {cpw !== null && (
+                            <div className="bg-gradient-to-br from-terracotta to-orange-600 rounded-2xl p-6 text-white relative overflow-hidden animate-fade-in">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                                <div className="relative z-10 flex justify-between items-end">
+                                    <div>
+                                        <p className="text-white/80 text-xs font-bold uppercase mb-1">True Cost / Wear</p>
+                                        <p className="text-4xl font-black">${cpw.toFixed(2)}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-white/80 text-xs font-bold mb-1">Lifespan</p>
+                                        <p className="text-xl font-bold">{lifespan} Wears</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Local Recycling Locator */}
@@ -358,8 +494,10 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                         {recyclingResult && (
                              <button 
                                 onClick={handleLocateRecycling}
-                                className="text-xs font-bold text-sage hover:text-sage/80"
+                                disabled={loadingRecycling}
+                                className="text-xs font-bold text-sage hover:text-sage/80 flex items-center gap-1 disabled:opacity-50"
                             >
+                                {loadingRecycling && <Loader2 size={10} className="animate-spin" />}
                                 Refresh
                             </button>
                         )}
@@ -382,7 +520,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                         </div>
                     )}
 
-                    {loadingRecycling && (
+                    {loadingRecycling && !recyclingResult && (
                         <div className="py-12 flex flex-col items-center justify-center bg-white dark:bg-stone-900 rounded-3xl">
                             <Loader2 className="animate-spin text-sage mb-3" size={32} />
                             <p className="text-sm font-bold text-gray-400">Scanning your area...</p>
@@ -396,31 +534,37 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                     )}
 
                     {recyclingResult && (
-                        <div className="grid gap-3 animate-fade-in">
-                            {recyclingResult.places.map((place, idx) => (
-                                <a 
-                                    key={idx} 
-                                    href={place.uri} 
-                                    target="_blank" 
-                                    rel="noreferrer"
-                                    className="bg-white dark:bg-stone-900 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex items-center justify-between group hover:border-sage/50 transition-colors"
-                                >
-                                    <div className="flex items-center gap-4 overflow-hidden">
-                                        <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0 group-hover:bg-sage/10 group-hover:text-sage transition-colors">
-                                            <MapPin size={18} />
+                        <div className="space-y-4 animate-fade-in">
+                            {/* Detailed Text Description from Gemini */}
+                            <div className="bg-white dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 text-sm leading-relaxed whitespace-pre-line text-ink dark:text-gray-200">
+                                {recyclingResult.text}
+                            </div>
+
+                            {/* Source Links */}
+                            <div className="grid gap-3">
+                                <h4 className="text-xs font-bold text-gray-400 uppercase ml-1">Sources & Locations</h4>
+                                {recyclingResult.places.map((place, idx) => (
+                                    <a 
+                                        key={idx} 
+                                        href={place.uri} 
+                                        target="_blank" 
+                                        rel="noreferrer"
+                                        className="bg-white dark:bg-stone-900 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex items-center justify-between group hover:border-sage/50 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-4 overflow-hidden">
+                                            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0 group-hover:bg-sage/10 group-hover:text-sage transition-colors">
+                                                <MapPin size={18} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h4 className="font-bold text-ink dark:text-white truncate text-sm">{place.title}</h4>
+                                                <p className="text-xs text-gray-400 truncate">Tap for directions</p>
+                                            </div>
                                         </div>
-                                        <div className="min-w-0">
-                                            <h4 className="font-bold text-ink dark:text-white truncate text-sm">{place.title}</h4>
-                                            <p className="text-xs text-gray-400 truncate">Tap for directions</p>
+                                        <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-stone-800 flex items-center justify-center text-gray-400 group-hover:bg-sage group-hover:text-white transition-all">
+                                            <ExternalLink size={14} />
                                         </div>
-                                    </div>
-                                    <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-stone-800 flex items-center justify-center text-gray-400 group-hover:bg-sage group-hover:text-white transition-all">
-                                        <ExternalLink size={14} />
-                                    </div>
-                                </a>
-                            ))}
-                            <div className="text-center mt-2">
-                                <p className="text-xs text-gray-400">Powered by Google Maps Grounding</p>
+                                    </a>
+                                ))}
                             </div>
                         </div>
                     )}

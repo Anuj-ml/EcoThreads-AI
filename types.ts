@@ -1,6 +1,7 @@
 
 export interface AnalysisResult {
   overallScore: number; // 0-100
+  mainMaterial: string; // e.g., "Organic Cotton"
   breakdown: {
     material: number;
     ethics: number;
@@ -11,6 +12,12 @@ export interface AnalysisResult {
   carbonFootprint: {
     value: string;
     comparison: string; // e.g., "driving 6 miles"
+    breakdown?: { // Percentage breakdown
+        material: number;
+        manufacturing: number;
+        transport: number;
+        use: number;
+    };
   };
   waterUsage: {
     saved: number; // Liters
@@ -32,6 +39,15 @@ export interface AnalysisResult {
     repair: string;
     note: string;
   };
+}
+
+export interface AlternativeProduct {
+  name: string;
+  brand: string;
+  price: string;
+  image: string;
+  url: string;
+  sustainabilityFeature: string;
 }
 
 export interface LocalAIResult {

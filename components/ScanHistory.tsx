@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
 import { HistoryItem } from '../types';
 import { getHistory, clearHistory } from '../services/storageService';
-import { ArrowLeft, Trash2, Calendar, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Trash2, Calendar, ChevronRight, Wind, Droplets, Shirt } from 'lucide-react';
 
 interface ScanHistoryProps {
   onBack: () => void;
@@ -46,27 +47,42 @@ export const ScanHistory: React.FC<ScanHistoryProps> = ({ onBack, onSelect }) =>
             <div 
               key={item.id}
               onClick={() => onSelect(item)}
-              className="bg-white dark:bg-stone-800 rounded-xl p-3 shadow-sm border border-stone-100 dark:border-stone-700 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all"
+              className="bg-white dark:bg-stone-800 rounded-2xl p-4 shadow-sm border border-stone-100 dark:border-stone-700 flex gap-4 cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
             >
-              <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-stone-700">
+              <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-stone-700 border border-stone-200 dark:border-stone-600">
                 <img src={item.thumbnail} alt="Scan" className="w-full h-full object-cover" />
               </div>
               
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start">
-                   <h3 className="font-bold text-ink dark:text-white truncate pr-2">
-                     {item.result.summary.split('.')[0]}
-                   </h3>
-                   <span className="text-xs font-medium text-white bg-sage px-2 py-0.5 rounded-full">
-                     {item.result.overallScore}
-                   </span>
+              <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                <div className="flex justify-between items-start gap-2">
+                   <div>
+                       <h3 className="font-bold text-ink dark:text-white truncate text-base leading-tight">
+                        {item.result.summary.split('.')[0]}
+                       </h3>
+                       {item.result.mainMaterial && (
+                           <div className="flex items-center gap-1 text-xs text-stone-500 dark:text-stone-400 mt-1">
+                               <Shirt size={10} /> {item.result.mainMaterial}
+                           </div>
+                       )}
+                   </div>
+                   <div className="flex flex-col items-end gap-1">
+                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full text-white ${item.result.overallScore > 70 ? 'bg-sage' : item.result.overallScore > 40 ? 'bg-yellow-500' : 'bg-terracotta'}`}>
+                         {item.result.overallScore}
+                       </span>
+                   </div>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {new Date(item.timestamp).toLocaleDateString()} • {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                </p>
+                
+                <div className="flex items-center gap-3 mt-3">
+                    <div className="flex items-center gap-1 text-[10px] bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 px-2 py-1 rounded-md">
+                        <Wind size={10} /> {item.result.carbonFootprint.value}
+                    </div>
+                    {item.result.waterUsage.saved > 0 && (
+                        <div className="flex items-center gap-1 text-[10px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md">
+                            <Droplets size={10} /> {item.result.waterUsage.saved}L Saved
+                        </div>
+                    )}
+                </div>
               </div>
-              
-              <ChevronRight className="text-gray-300 dark:text-gray-600" size={20} />
             </div>
           ))
         )}

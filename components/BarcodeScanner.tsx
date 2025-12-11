@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface BarcodeScannerProps {
   onScan: (decodedText: string) => void;
@@ -10,6 +10,7 @@ interface BarcodeScannerProps {
 export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [scanSuccess, setScanSuccess] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const mountedRef = useRef(true);
 
@@ -43,11 +44,23 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
             ]
           },
           (decodedText) => {
-            if (mountedRef.current) {
-                if (navigator.vibrate) navigator.vibrate(200);
-                onScan(decodedText);
-                // Stop immediately to prevent duplicate reads
-                html5QrCode.stop().catch(console.error);
+            if (mountedRef.current && !scanSuccess) {
+                // Trigger success state immediately
+                setScanSuccess(true);
+                
+                // Haptic feedback
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                
+                // Stop scanner to freeze frame
+                html5QrCode.pause();
+
+                // Delay actual processing to show visual feedback
+                setTimeout(() => {
+                    if (mountedRef.current) {
+                        onScan(decodedText);
+                        html5QrCode.stop().catch(console.error);
+                    }
+                }, 1200);
             }
           },
           (errorMessage) => {
@@ -77,27 +90,40 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
     return () => {
       mountedRef.current = false;
       if (scannerRef.current) {
-        scannerRef.current.stop().then(() => {
-            scannerRef.current?.clear();
-        }).catch(err => console.warn("Scanner stop error:", err));
+        // Try/catch stop to avoid errors if already stopped/cleared
+        try {
+            if (scannerRef.current.isScanning) {
+                scannerRef.current.stop().then(() => {
+                    scannerRef.current?.clear();
+                }).catch(err => console.warn("Scanner stop error:", err));
+            } else {
+                scannerRef.current?.clear();
+            }
+        } catch (e) {
+            console.warn("Cleanup error", e);
+        }
       }
     };
-  }, [onScan]);
+  }, [onScan, scanSuccess]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center animate-fade-in">
-      <button 
-        onClick={onClose}
-        className="absolute top-6 right-6 text-white p-3 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm z-50 transition-colors"
-        aria-label="Close Scanner"
-      >
-        <X size={24} />
-      </button>
+      {!scanSuccess && (
+        <button 
+            onClick={onClose}
+            className="absolute top-6 right-6 text-white p-3 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm z-50 transition-colors"
+            aria-label="Close Scanner"
+        >
+            <X size={24} />
+        </button>
+      )}
       
       <div className="w-full max-w-sm px-6 relative flex flex-col items-center">
-        <h3 className="text-white mb-6 font-bold text-xl tracking-tight">Scan Barcode or QR</h3>
+        <h3 className={`text-white mb-6 font-bold text-xl tracking-tight transition-opacity ${scanSuccess ? 'opacity-0' : 'opacity-100'}`}>
+            Scan Barcode or QR
+        </h3>
         
-        <div className="w-full aspect-square bg-stone-900 rounded-2xl overflow-hidden shadow-2xl relative border border-white/10">
+        <div className={`w-full aspect-square bg-stone-900 rounded-2xl overflow-hidden shadow-2xl relative border transition-all duration-300 ${scanSuccess ? 'border-green-500 shadow-green-500/50 scale-105' : 'border-white/10'}`}>
             {/* The library mounts the video element here */}
             <div id="qr-reader-container" className="w-full h-full"></div>
             
@@ -124,9 +150,19 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onClose 
                     </button>
                 </div>
             )}
+
+            {/* Success Overlay */}
+            {scanSuccess && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-green-500/20 z-30 backdrop-blur-sm animate-in fade-in zoom-in duration-300">
+                    <div className="bg-white rounded-full p-4 shadow-xl mb-4 animate-bounce">
+                        <CheckCircle2 className="w-12 h-12 text-green-600" />
+                    </div>
+                    <p className="text-white font-bold text-lg drop-shadow-md">Code Detected!</p>
+                </div>
+            )}
             
-            {/* Visual Guide Overlay (Visible when active) */}
-            {!isInitializing && !error && (
+            {/* Visual Guide Overlay (Visible when active and not success) */}
+            {!isInitializing && !error && !scanSuccess && (
                 <div className="absolute inset-0 pointer-events-none">
                      <div className="absolute inset-0 border-[40px] border-black/50"></div>
                      <div className="absolute top-1/2 left-8 right-8 h-0.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse"></div>

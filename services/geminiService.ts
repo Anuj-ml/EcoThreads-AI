@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, LocalAIResult, RecyclingResult } from "../types";
+import { AnalysisResult, LocalAIResult, RecyclingResult, AlternativeProduct } from "../types";
 import { MATERIALS_DB, BRANDS_DB } from "../data/knowledgeBase";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -32,10 +32,12 @@ export const analyzeSustainability = async (
     1. **Material Identification**: 
        - PRIORITIZE OCR text for specific percentages.
        - IF OCR is silent, INFER from visual texture (e.g., "Denim" -> Cotton).
+       - EXTRACT the "mainMaterial" string (e.g. "Recycled Polyester").
     
     2. **Impact Calculation**:
        - Estimate Weight based on item type.
        - Carbon Formula: (Weight * Material_CO2_Factor) + 1.5kg.
+       - Estimate Carbon Breakdown % (Material extraction vs Manufacturing vs Transport vs Use).
        - Water Usage: Compare against global averages.
 
     3. **Scoring Algorithm (0-100)**:
@@ -77,6 +79,7 @@ export const analyzeSustainability = async (
           type: Type.OBJECT,
           properties: {
             overallScore: { type: Type.NUMBER },
+            mainMaterial: { type: Type.STRING, description: "The primary fabric detected, e.g., '100% Organic Cotton'" },
             breakdown: {
               type: Type.OBJECT,
               properties: {
@@ -91,7 +94,16 @@ export const analyzeSustainability = async (
               type: Type.OBJECT,
               properties: {
                 value: { type: Type.STRING },
-                comparison: { type: Type.STRING }
+                comparison: { type: Type.STRING },
+                breakdown: {
+                    type: Type.OBJECT,
+                    properties: {
+                        material: { type: Type.NUMBER, description: "Percentage attributed to raw material" },
+                        manufacturing: { type: Type.NUMBER, description: "Percentage attributed to production" },
+                        transport: { type: Type.NUMBER, description: "Percentage attributed to logistics" },
+                        use: { type: Type.NUMBER, description: "Percentage attributed to consumer care" }
+                    }
+                }
               }
             },
             waterUsage: {
@@ -145,11 +157,86 @@ export const analyzeSustainability = async (
   }
 };
 
+/**
+ * Offline Fallback Analysis
+ * Uses local heuristic logic to estimate sustainability when Gemini is unreachable.
+ */
+export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResult => {
+  const combinedText = (localAI.classification.join(' ') + ' ' + localAI.ocrText).toLowerCase();
+  
+  // 1. Detect Material
+  let foundMaterial = MATERIALS_DB.find(m => combinedText.includes(m.name.toLowerCase().split(' ')[0]));
+  if (!foundMaterial) foundMaterial = MATERIALS_DB[0]; // Default to conventional cotton if unknown
+
+  // 2. Detect Brand
+  const brandName = Object.keys(BRANDS_DB).find(b => combinedText.includes(b.toLowerCase()));
+  const brandData = brandName ? BRANDS_DB[brandName] : { ethics: 50, transparency: 50 };
+
+  // 3. Calculate Score (Simple weighted average)
+  const score = Math.round(
+    (foundMaterial.score * 10 * 0.5) + 
+    (brandData.ethics * 0.3) + 
+    (brandData.transparency * 0.2)
+  );
+
+  return {
+    overallScore: score,
+    mainMaterial: foundMaterial.name,
+    breakdown: {
+      material: foundMaterial.score * 10,
+      ethics: brandData.ethics,
+      production: 50,
+      longevity: 60,
+      transparency: brandData.transparency
+    },
+    carbonFootprint: {
+      value: `${foundMaterial.carbonPerKg}kg CO2e`,
+      comparison: "Estimated offline",
+      breakdown: {
+          material: 50,
+          manufacturing: 30,
+          transport: 10,
+          use: 10
+      }
+    },
+    waterUsage: {
+      saved: 0,
+      comparison: "Data unavailable offline"
+    },
+    certifications: ["Offline Mode - Pending Verification"],
+    summary: `Offline Analysis: Detected potential ${foundMaterial.name}. Connect to internet for detailed report.`,
+    estimatedLifespan: 30,
+    careGuide: {
+      wash: "Wash cold (General recommendation)",
+      dry: "Air dry to save energy",
+      repair: "Check seams regularly",
+      note: "Offline mode: Standard care applies."
+    },
+    alternatives: [
+      {
+        name: "Check online for alternatives",
+        brand: "System",
+        score: 0,
+        imagePlaceholder: "default",
+        url: "#"
+      }
+    ]
+  };
+};
+
 export const findRecyclingCenters = async (lat: number, lng: number): Promise<RecyclingResult> => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Find 3 closest textile recycling centers or clothing donation drop-off points near these coordinates: ${lat}, ${lng}. Return a short markdown list with names and why they are good.`,
+      contents: `Find 3 closest textile recycling centers or clothing donation drop-off points near these coordinates: ${lat}, ${lng}. 
+      For each location, provide a structured summary including:
+      1. Name
+      2. Address
+      3. Operating Hours (approximate)
+      4. Accepted Materials (e.g., clothes, shoes, rags)
+      5. Contact Phone (if available)
+      
+      Return the response as clear text/markdown, do NOT use JSON.`,
       config: {
         tools: [{googleMaps: {}}],
         toolConfig: {
@@ -184,4 +271,54 @@ export const findRecyclingCenters = async (lat: number, lng: number): Promise<Re
     console.error("Recycling Locator Error:", error);
     throw new Error("Could not find recycling centers.");
   }
+};
+
+export const searchSustainableAlternatives = async (query: string): Promise<AlternativeProduct[]> => {
+    try {
+        const prompt = `
+        Find 4 real, available sustainable fashion products matching "${query}".
+        Focus on recognized sustainable brands (e.g., Patagonia, Reformation, Everlane, Organic Basics, Kotn).
+        
+        Return a valid JSON array of objects. Each object must have:
+        - "name": Product Name
+        - "brand": Brand Name
+        - "price": Price (approx)
+        - "sustainabilityFeature": Short reason why it's eco-friendly (max 5 words)
+        - "url": URL to product page (must be a valid URL starting with http)
+        - "image": A direct image URL for the product if you can find one, otherwise return "default".
+        
+        Strictly format the output as a JSON array only. No markdown ticks.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                tools: [{googleSearch: {}}]
+            }
+        });
+
+        const text = response.text || "";
+        
+        // Clean markdown code blocks if present
+        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        let products: AlternativeProduct[] = [];
+        try {
+            products = JSON.parse(jsonStr);
+        } catch (e) {
+            console.warn("Failed to parse alternatives JSON", e);
+            return [];
+        }
+
+        // Validate and clean up
+        return products.map(p => ({
+            ...p,
+            image: (p.image && p.image.startsWith('http')) ? p.image : `https://source.unsplash.com/featured/?${encodeURIComponent(p.name + " " + p.brand)}`, // Unsplash fallback
+        }));
+
+    } catch (error) {
+        console.error("Alternatives Search Error:", error);
+        return [];
+    }
 };
