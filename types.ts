@@ -70,8 +70,14 @@ export interface GamificationProfile {
   scansCompleted: number;
 }
 
+export interface RecyclingLocation {
+  name: string;
+  address: string;
+  info: string;
+}
+
 export interface RecyclingResult {
-  text: string;
+  locations: RecyclingLocation[];
   places: Array<{
     title: string;
     uri: string;

@@ -170,7 +170,8 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
   };
 
   // Helper for Score Ring
-  const radius = 40;
+  // Increased radius to fill the space
+  const radius = 56;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - ((result.overallScore / 100) * circumference);
   const scoreColor = result.overallScore > 75 ? '#8A9A5B' : result.overallScore > 40 ? '#EAB308' : '#D95D39';
@@ -220,10 +221,10 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
             
             {/* Prominent Eco-Score Display */}
             <div className="relative mb-4 flex flex-col items-center animate-fade-in-up">
-                 {/* Score Ring with fixed alignment */}
-                <div className="relative w-28 h-28 flex items-center justify-center bg-stone-800/40 backdrop-blur-xl rounded-full border border-white/10 shadow-2xl mb-2">
-                    <svg className="transform -rotate-90 w-full h-full p-1" viewBox="0 0 120 120">
-                        <circle cx="60" cy="60" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent" className="text-stone-700/50" />
+                 {/* Score Ring - Clean Single Circle Design */}
+                <div className="relative w-28 h-28 flex items-center justify-center mb-2">
+                    <svg className="transform -rotate-90 w-full h-full p-0.5" viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent" className="text-white/10" />
                         <circle 
                             cx="60" cy="60" r={radius} 
                             stroke={scoreColor} 
@@ -232,7 +233,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                             strokeDasharray={circumference} 
                             strokeDashoffset={strokeDashoffset} 
                             strokeLinecap="round"
-                            className="transition-all duration-[1.5s] ease-out shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                            className="transition-all duration-[1.5s] ease-out shadow-[0_0_20px_rgba(255,255,255,0.3)]"
                         />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -692,37 +693,66 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
 
                     {recyclingResult && (
                         <div className="space-y-4 animate-fade-in">
-                            {/* Detailed Text Description from Gemini */}
-                            <div className="bg-white dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 text-sm leading-relaxed whitespace-pre-line text-ink dark:text-gray-200">
-                                {recyclingResult.text}
+                            {/* Structured List of Locations */}
+                            <div className="grid gap-3">
+                                {recyclingResult.locations.map((loc, idx) => {
+                                    // Try to find a matching link from grounding chunks
+                                    const matchingPlace = recyclingResult.places.find(
+                                        p => p.title.includes(loc.name) || loc.name.includes(p.title)
+                                    );
+                                    const mapLink = matchingPlace ? matchingPlace.uri : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.name + ' ' + loc.address)}`;
+
+                                    return (
+                                        <a 
+                                            key={idx} 
+                                            href={mapLink} 
+                                            target="_blank" 
+                                            rel="noreferrer"
+                                            className="bg-white dark:bg-stone-900 p-5 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex items-start gap-4 group hover:border-sage/50 transition-colors hover:scale-[1.01]"
+                                        >
+                                            <div className="w-10 h-10 rounded-full bg-sage/10 flex items-center justify-center flex-shrink-0 text-sage group-hover:bg-sage group-hover:text-white transition-colors">
+                                                <MapPin size={20} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-bold text-ink dark:text-white text-sm mb-1">{loc.name}</h4>
+                                                <p className="text-xs text-gray-500 mb-2 truncate">{loc.address}</p>
+                                                <p className="text-xs text-sage font-medium bg-sage/5 px-2 py-1 rounded-md inline-block">
+                                                    {loc.info}
+                                                </p>
+                                            </div>
+                                            <ExternalLink size={14} className="text-gray-300 group-hover:text-sage" />
+                                        </a>
+                                    );
+                                })}
+                                
+                                {recyclingResult.locations.length === 0 && (
+                                     <p className="text-sm text-gray-400 text-center py-4">No specific details found, check the map links below.</p>
+                                )}
                             </div>
 
-                            {/* Source Links */}
-                            <div className="grid gap-3">
-                                <h4 className="text-xs font-bold text-gray-400 uppercase ml-1">Sources & Locations</h4>
-                                {recyclingResult.places.map((place, idx) => (
-                                    <a 
-                                        key={idx} 
-                                        href={place.uri} 
-                                        target="_blank" 
-                                        rel="noreferrer"
-                                        className="bg-white dark:bg-stone-900 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex items-center justify-between group hover:border-sage/50 transition-colors hover:scale-[1.01]"
-                                    >
-                                        <div className="flex items-center gap-4 overflow-hidden">
-                                            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0 group-hover:bg-sage/10 group-hover:text-sage transition-colors">
-                                                <MapPin size={18} />
+                            {/* Fallback/Additional Source Links (if any distinct ones exist) */}
+                            {recyclingResult.places.length > 0 && recyclingResult.locations.length === 0 && (
+                                <div className="grid gap-3">
+                                    <h4 className="text-xs font-bold text-gray-400 uppercase ml-1">Search Results</h4>
+                                    {recyclingResult.places.map((place, idx) => (
+                                        <a 
+                                            key={idx} 
+                                            href={place.uri} 
+                                            target="_blank" 
+                                            rel="noreferrer"
+                                            className="bg-white dark:bg-stone-900 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex items-center justify-between group hover:border-sage/50 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-4 overflow-hidden">
+                                                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
+                                                    <MapPin size={14} />
+                                                </div>
+                                                <span className="font-bold text-ink dark:text-white truncate text-xs">{place.title}</span>
                                             </div>
-                                            <div className="min-w-0">
-                                                <h4 className="font-bold text-ink dark:text-white truncate text-sm">{place.title}</h4>
-                                                <p className="text-xs text-gray-400 truncate">Tap for directions</p>
-                                            </div>
-                                        </div>
-                                        <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-stone-800 flex items-center justify-center text-gray-400 group-hover:bg-sage group-hover:text-white transition-all">
-                                            <ExternalLink size={14} />
-                                        </div>
-                                    </a>
-                                ))}
-                            </div>
+                                            <ExternalLink size={12} className="text-gray-400" />
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

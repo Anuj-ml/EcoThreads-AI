@@ -233,17 +233,25 @@ export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResu
 
 export const findRecyclingCenters = async (lat: number, lng: number): Promise<RecyclingResult> => {
   try {
+    const prompt = `
+      Find 3 closest textile recycling centers or clothing donation drop-off points near these coordinates: ${lat}, ${lng}. 
+      
+      Requirements:
+      1. Use the Google Maps tool to find real locations.
+      2. Return the response strictly as a JSON array of objects.
+      3. Do NOT wrap the JSON in markdown code blocks.
+      
+      JSON Object Structure:
+      {
+        "name": "Name of the center",
+        "address": "Full Address",
+        "info": "Brief info about hours and what they accept (e.g. 'Open 9-5, Accepts clothes & shoes')"
+      }
+    `;
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Find 3 closest textile recycling centers or clothing donation drop-off points near these coordinates: ${lat}, ${lng}. 
-      For each location, provide a structured summary including:
-      1. Name
-      2. Address
-      3. Operating Hours (approximate)
-      4. Accepted Materials (e.g., clothes, shoes, rags)
-      5. Contact Phone (if available)
-      
-      Return the response as clear text/markdown, do NOT use JSON.`,
+      contents: prompt,
       config: {
         tools: [{googleMaps: {}}],
         toolConfig: {
@@ -257,7 +265,14 @@ export const findRecyclingCenters = async (lat: number, lng: number): Promise<Re
       },
     });
 
-    const text = response.text || "No results found.";
+    const text = response.text || "[]";
+    let locations = [];
+    try {
+        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        locations = JSON.parse(jsonStr);
+    } catch (e) {
+        console.warn("Failed to parse locations JSON", e);
+    }
     
     // Extract grounding chunks for links
     const places: Array<{title: string, uri: string}> = [];
@@ -273,7 +288,7 @@ export const findRecyclingCenters = async (lat: number, lng: number): Promise<Re
       });
     }
 
-    return { text, places };
+    return { locations, places };
   } catch (error) {
     console.error("Recycling Locator Error:", error);
     throw new Error("Could not find recycling centers.");
