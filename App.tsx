@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, ArrowRight, ScanLine, Barcode, History, AlertCircle, X, Moon, Sun, Loader2, Zap, Leaf } from 'lucide-react';
+import { Camera, Upload, ArrowRight, ScanLine, Barcode, History, AlertCircle, X, Moon, Sun, Loader2, Zap, Leaf, Menu } from 'lucide-react';
 import { AppState, AnalysisResult, LocalAIResult, HistoryItem } from './types';
-import { classifyImage } from './services/tensorFlowService';
+import { classifyImage, loadModel } from './services/tensorFlowService';
 import { extractTextFromImage } from './services/ocrService';
 import { analyzeSustainability, analyzeSustainabilityLocal } from './services/geminiService';
 import { getGamificationProfile } from './services/storageService';
@@ -10,7 +10,7 @@ import { AnalysisLoader } from './components/AnalysisLoader';
 import { ResultsDashboard } from './components/ResultsDashboard';
 import { BarcodeScanner } from './components/BarcodeScanner';
 import { ScanHistory } from './components/ScanHistory';
-import { GamificationHub } from './components/GamificationHub';
+import { SideMenu } from './components/SideMenu';
 import { PRODUCTS_DB } from './data/knowledgeBase';
 
 export const App = () => {
@@ -24,6 +24,7 @@ export const App = () => {
   const [isProcessing, setIsProcessing] = useState(false); // For Camera Capture
   const [isUploading, setIsUploading] = useState(false); // For File Upload
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   // Scanning overlay state
   const [scanGuidance, setScanGuidance] = useState<{text: string, color: string}>({ text: "Searching...", color: "border-white/30" });
@@ -42,6 +43,13 @@ export const App = () => {
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  // Preload Models for Offline readiness
+  useEffect(() => {
+    if (navigator.onLine) {
+       loadModel().catch(console.error);
+    }
   }, []);
 
   // Dark Mode Effect
@@ -131,8 +139,7 @@ export const App = () => {
 
   // Image Processing Pipeline
   const applyImageEnhancements = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    // 1. Sharpening Convolution (Kernel: [[0,-1,0], [-1,5,-1], [0,-1,0]])
-    // This runs on CPU, so we only do it for reasonable image sizes.
+    // Sharpening Convolution (Kernel: [[0,-1,0], [-1,5,-1], [0,-1,0]])
     const imgData = ctx.getImageData(0, 0, width, height);
     const data = imgData.data;
     const src = new Uint8ClampedArray(data); // Create copy for reading
@@ -159,7 +166,6 @@ export const App = () => {
 
   const getProcessedImage = async (source: HTMLVideoElement | HTMLImageElement): Promise<{ blob: Blob, base64: string }> => {
     const canvas = document.createElement('canvas');
-    // Limit resolution to max 1080px width/height to ensure performance during convolution
     const maxDim = 1080;
     let w = 'videoWidth' in source ? source.videoWidth : source.naturalWidth;
     let h = 'videoWidth' in source ? source.videoHeight : source.naturalHeight;
@@ -174,13 +180,33 @@ export const App = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error("Failed to get canvas context");
 
-    // 1. Draw with CSS Filters (GPU accelerated contrast/brightness)
-    ctx.filter = 'contrast(1.2) brightness(1.1) saturate(1.1)';
+    // 1. Draw original
     ctx.drawImage(source, 0, 0, w, h);
-    ctx.filter = 'none'; // Reset filter
 
-    // 2. Apply CPU-based Sharpening
-    applyImageEnhancements(ctx, w, h);
+    // 2. Analyze Brightness (Only apply enhancements if necessary)
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    let brightnessSum = 0;
+    // Sample every 40th pixel to speed up analysis
+    for (let i = 0; i < data.length; i += 40) {
+        brightnessSum += (data[i] + data[i + 1] + data[i + 2]) / 3;
+    }
+    const avgBrightness = brightnessSum / (data.length / 40);
+
+    // If image is poorly lit (too dark < 70) or low contrast, run enhancements
+    if (avgBrightness < 70) {
+         console.log("Low light detected (" + Math.round(avgBrightness) + "), applying enhancement filters.");
+         // Re-draw with filters
+         ctx.filter = 'contrast(1.4) brightness(1.3) saturate(1.1)';
+         ctx.drawImage(source, 0, 0, w, h);
+         ctx.filter = 'none'; // Reset
+         
+         // Apply sharpening for better OCR
+         applyImageEnhancements(ctx, w, h);
+    } else {
+        // If lighting is good, skip convolution to save battery/processing time
+        console.log("Good lighting (" + Math.round(avgBrightness) + "), skipping enhancements.");
+    }
 
     return new Promise((resolve, reject) => {
        const base64 = canvas.toDataURL('image/jpeg', 0.9);
@@ -196,7 +222,6 @@ export const App = () => {
       setIsProcessing(true);
       try {
         const { blob, base64 } = await getProcessedImage(videoRef.current);
-        // Create a File object from Blob to mimic file upload structure for consistency
         const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
         processImagePipeline(file, base64);
       } catch (e: any) {
@@ -219,7 +244,6 @@ export const App = () => {
             img.src = event.target.result as string;
             await new Promise(r => img.onload = r);
             
-            // Enhance uploaded image as well
             const { blob, base64 } = await getProcessedImage(img);
             const processedFile = new File([blob], file.name, { type: file.type });
             processImagePipeline(processedFile, base64);
@@ -258,11 +282,9 @@ export const App = () => {
             const finalResult = await analyzeSustainability(base64data, localAI);
             setResult(finalResult);
         } else {
-            // Offline Fallback
             console.log("Offline mode detected. Running heuristic analysis.");
             const localResult = analyzeSustainabilityLocal(localAI);
             setResult(localResult);
-            // Simulate processing time
             await new Promise(r => setTimeout(r, 1500)); 
         }
         
@@ -297,89 +319,80 @@ export const App = () => {
     );
   };
 
-  // EXPERT LANDING PAGE DESIGN
   const renderLanding = () => (
     <div className="flex flex-col h-screen bg-cream dark:bg-stone-950 transition-colors duration-500 relative overflow-hidden">
         {renderError()}
         
-        {/* Toggle Dark Mode */}
-        <button 
-            onClick={() => setDarkMode(!darkMode)}
-            className="absolute top-6 right-6 z-30 p-2.5 rounded-full bg-white/10 hover:bg-black/5 dark:hover:bg-white/10 dark:text-white transition-all backdrop-blur-sm border border-transparent hover:border-stone-200 dark:hover:border-stone-700"
-        >
-            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
+        <SideMenu 
+            isOpen={isMenuOpen} 
+            onClose={() => setIsMenuOpen(false)} 
+            onNavigate={(state) => setAppState(state)}
+            profile={getGamificationProfile()}
+        />
+
+        {/* Top Navigation Bar */}
+        <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-30">
+             <button 
+                onClick={() => setIsMenuOpen(true)}
+                className="p-3 bg-white/50 dark:bg-black/20 hover:bg-white dark:hover:bg-black/40 backdrop-blur-md rounded-full shadow-sm transition-all text-ink dark:text-white"
+             >
+                <Menu size={24} />
+             </button>
+             
+             <button 
+                onClick={() => setDarkMode(!darkMode)}
+                className="p-3 bg-white/50 dark:bg-black/20 hover:bg-white dark:hover:bg-black/40 backdrop-blur-md rounded-full shadow-sm transition-all text-ink dark:text-white"
+            >
+                {darkMode ? <Sun size={24} /> : <Moon size={24} />}
+            </button>
+        </div>
 
         {/* Dynamic Background */}
         <div className="absolute inset-0 pointer-events-none">
-             <div className="absolute -top-20 -right-20 w-96 h-96 bg-terracotta/20 dark:bg-terracotta/10 rounded-full blur-[100px] animate-pulse"></div>
-             <div className="absolute top-1/3 -left-20 w-72 h-72 bg-periwinkle/30 dark:bg-periwinkle/10 rounded-full blur-[80px]"></div>
-             <div className="absolute bottom-0 right-0 w-full h-1/2 bg-gradient-to-t from-white via-white/0 to-transparent dark:from-stone-950 dark:via-stone-950/0"></div>
+             <div className="absolute -top-[20%] -right-[20%] w-[80vh] h-[80vh] bg-terracotta/10 rounded-full blur-[120px] animate-pulse"></div>
+             <div className="absolute top-[40%] -left-[20%] w-[60vh] h-[60vh] bg-periwinkle/10 rounded-full blur-[100px]"></div>
         </div>
 
-        {/* Hero Section */}
-        <div className="flex-1 flex flex-col items-center relative z-10 pt-16 px-6">
+        {/* Main Content Centered */}
+        <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-8 text-center">
             
             {/* Logo Mark */}
-            <div className="mb-8 flex items-center gap-2">
-                <div className="w-8 h-8 bg-ink dark:bg-white rounded-tr-xl rounded-bl-xl flex items-center justify-center">
-                    <Leaf size={16} className="text-white dark:text-ink" />
+            <div className="mb-12 animate-fade-in-down">
+                <div className="w-20 h-20 bg-gradient-to-br from-ink to-stone-800 dark:from-white dark:to-stone-200 rounded-[2rem] flex items-center justify-center shadow-2xl mx-auto mb-6 transform rotate-3 hover:rotate-6 transition-transform">
+                    <Leaf size={40} className="text-white dark:text-ink" />
                 </div>
-                <span className="font-bold text-lg tracking-widest uppercase text-ink dark:text-white">EcoThreads</span>
-            </div>
-
-            {/* Main Headline */}
-            <div className="text-center mb-8 max-w-sm relative">
-                <h1 className="text-6xl font-light text-ink dark:text-white leading-[0.9] tracking-tighter mb-4">
-                    Fashion,<br />
-                    <span className="font-bold font-serif italic text-terracotta">Reimagined.</span>
+                <h1 className="text-5xl md:text-7xl font-light text-ink dark:text-white leading-tight tracking-tighter">
+                    EcoThreads
                 </h1>
-                <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed">
-                    The AI-powered sustainability lens for your modern wardrobe.
-                </p>
-                {isOffline && (
-                    <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-stone-100 dark:bg-stone-800 rounded-full text-xs font-bold text-gray-500">
-                        <Zap size={12} className="text-orange-400" /> Offline Mode Active
+                <p className="text-sm font-bold tracking-[0.3em] uppercase text-terracotta mt-2">AI Sustainability Lens</p>
+            </div>
+
+            {/* Scan Trigger */}
+            <div className="relative group cursor-pointer animate-fade-in-up delay-100" onClick={handleStart}>
+                 <div className="absolute inset-0 bg-terracotta/30 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 scale-150"></div>
+                 <button 
+                    className="relative px-12 py-6 bg-ink dark:bg-white text-white dark:text-ink rounded-full font-bold text-lg shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 group-hover:shadow-terracotta/50"
+                 >
+                    <ScanLine size={24} />
+                    Start Analysis
+                    <div className="w-8 h-8 bg-white/20 dark:bg-black/10 rounded-full flex items-center justify-center ml-2">
+                        <ArrowRight size={16} />
                     </div>
-                )}
+                 </button>
             </div>
 
-            {/* Interactive Scanner Trigger */}
-            <div className="relative group cursor-pointer mb-auto" onClick={handleStart}>
-                 <div className="absolute inset-0 bg-terracotta rounded-full blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-500 scale-110"></div>
-                 <div className="relative w-64 h-64 rounded-full overflow-hidden border-[6px] border-white dark:border-stone-800 shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]">
-                     <img src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&q=80&w=600" className="w-full h-full object-cover" alt="Fashion Texture" />
-                     <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
-                     <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 text-white">
-                            <ScanLine size={32} />
-                        </div>
-                     </div>
-                 </div>
-            </div>
-            
-            {/* Gamification Widget (Mini) */}
-            <div className="w-full max-w-sm mb-8 transform hover:-translate-y-1 transition-transform duration-300">
-               <GamificationHub profile={getGamificationProfile()} />
-            </div>
-
-            {/* Action Bar */}
-            <div className="w-full max-w-md grid grid-cols-4 gap-3 mb-8">
-                <button 
-                    onClick={handleStart}
-                    className="col-span-3 bg-ink dark:bg-white text-white dark:text-ink py-5 rounded-[2rem] font-bold text-lg shadow-xl shadow-ink/20 dark:shadow-white/10 hover:shadow-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
-                >
-                    Start Scan <ArrowRight size={20} />
-                </button>
-                
-                <button 
-                    onClick={() => setAppState(AppState.HISTORY)}
-                    className="col-span-1 bg-white dark:bg-stone-800 text-ink dark:text-white rounded-[2rem] flex items-center justify-center shadow-lg border border-stone-100 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors"
-                    aria-label="History"
-                >
-                    <History size={24} />
-                </button>
-            </div>
+            {isOffline && (
+                <div className="mt-8 animate-fade-in">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-stone-100 dark:bg-stone-800/50 rounded-full text-xs font-bold text-gray-500 dark:text-gray-400 border border-stone-200 dark:border-stone-700">
+                        <Zap size={12} className="text-orange-400" /> Offline Mode Active
+                    </span>
+                </div>
+            )}
+        </div>
+        
+        {/* Footer */}
+        <div className="p-6 text-center z-10 opacity-40 hover:opacity-100 transition-opacity">
+            <p className="text-xs text-ink dark:text-white font-medium">Powered by Gemini Hybrid AI</p>
         </div>
     </div>
   );

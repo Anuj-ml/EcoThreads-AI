@@ -60,6 +60,7 @@ export interface HistoryItem {
   timestamp: number;
   result: AnalysisResult;
   thumbnail: string; // Base64 data URI
+  userFeedback?: 'positive' | 'negative';
 }
 
 export interface GamificationProfile {

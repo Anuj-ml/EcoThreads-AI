@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Camera, ScanEye, BrainCircuit, Leaf } from 'lucide-react';
 
@@ -13,10 +14,17 @@ export const AnalysisLoader: React.FC<AnalysisLoaderProps> = ({ stage }) => {
   ];
 
   const getStatusColor = (stepId: string) => {
-    if (stage === stepId) return 'text-terracotta animate-pulse';
+    if (stage === stepId) return 'text-terracotta';
     const stages = ['vision', 'ocr', 'fusion', 'complete'];
     if (stages.indexOf(stage) > stages.indexOf(stepId)) return 'text-sage';
     return 'text-gray-300 dark:text-gray-600';
+  };
+
+  const getIconContainerStyle = (stepId: string) => {
+    if (stage === stepId) return 'bg-orange-50 dark:bg-orange-900/20 ring-2 ring-terracotta/20 animate-pulse';
+    const stages = ['vision', 'ocr', 'fusion', 'complete'];
+    if (stages.indexOf(stage) > stages.indexOf(stepId)) return 'bg-green-50 dark:bg-green-900/20';
+    return 'bg-gray-50 dark:bg-stone-800';
   };
 
   return (
@@ -25,24 +33,29 @@ export const AnalysisLoader: React.FC<AnalysisLoaderProps> = ({ stage }) => {
         <div className="w-24 h-24 rounded-full bg-periwinkle/20 dark:bg-periwinkle/10 flex items-center justify-center animate-bounce">
           <Leaf className="w-12 h-12 text-terracotta" />
         </div>
+        <div className="absolute inset-0 rounded-full border-4 border-terracotta/10 animate-ping"></div>
       </div>
       
-      <h2 className="text-3xl font-bold text-ink dark:text-white">Analyzing Impact...</h2>
+      <h2 className="text-3xl font-bold text-ink dark:text-white animate-fade-in-up">Analyzing Impact...</h2>
       
       <div className="w-full max-w-md space-y-4">
-        {steps.map((step) => {
+        {steps.map((step, idx) => {
           const Icon = step.icon;
           return (
-            <div key={step.id} className="flex items-center p-4 bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 transition-all duration-300">
-              <div className={`p-3 rounded-full bg-cream dark:bg-stone-900 ${getStatusColor(step.id)}`}>
-                <Icon size={24} />
+            <div 
+              key={step.id} 
+              className="flex items-center p-4 bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 transition-all duration-500 animate-fade-in-up"
+              style={{ animationDelay: `${idx * 150}ms` }}
+            >
+              <div className={`p-3 rounded-full transition-colors duration-300 ${getIconContainerStyle(step.id)}`}>
+                <Icon size={24} className={getStatusColor(step.id)} />
               </div>
               <div className="ml-4 text-left">
-                <h3 className={`font-bold ${getStatusColor(step.id)}`}>{step.label}</h3>
+                <h3 className={`font-bold transition-colors duration-300 ${getStatusColor(step.id)}`}>{step.label}</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{step.sub}</p>
               </div>
               {getStatusColor(step.id).includes('sage') && (
-                <div className="ml-auto text-sage font-bold">✓</div>
+                <div className="ml-auto text-sage font-bold animate-in zoom-in spin-in-180 duration-300">✓</div>
               )}
             </div>
           )

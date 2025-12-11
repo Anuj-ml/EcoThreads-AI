@@ -2,11 +2,12 @@
 import React, { useEffect, useState } from 'react';
 import { AnalysisResult, RecyclingResult, AlternativeProduct } from '../types';
 import { findRecyclingCenters, searchSustainableAlternatives } from '../services/geminiService';
+import { MATERIALS_DB, BRANDS_DB } from '../data/knowledgeBase';
 import { 
   Share2, RotateCcw, Droplets, Wind, ExternalLink, Leaf, Shirt, 
   Thermometer, Waves, Scissors, HeartHandshake, Calculator, MapPin, 
   Loader2, ArrowRight, Star, Navigation, Zap, Car, Coffee, Smartphone,
-  ShoppingBag
+  ShoppingBag, ThumbsUp, ThumbsDown, Sprout, Factory, Scale, Award, Check
 } from 'lucide-react';
 import { saveToHistory, addPoints } from '../services/storageService';
 
@@ -36,6 +37,13 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
   // Gamification State
   const [pointsToast, setPointsToast] = useState<{show: boolean, amount: number, label: string}>({ show: false, amount: 0, label: '' });
 
+  // Feedback State
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
+  
+  // Knowledge Base Lookups
+  const [materialInfo, setMaterialInfo] = useState<any>(null);
+  const [brandInfo, setBrandInfo] = useState<any>(null);
+
   useEffect(() => {
     if (!isHistoryView) {
       saveToHistory(result, thumbnail);
@@ -46,13 +54,45 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
     if (result.estimatedLifespan) {
         setLifespan(result.estimatedLifespan);
     }
+    
+    // Identify Material Context
+    const matchedMaterial = MATERIALS_DB.find(m => 
+      result.mainMaterial.toLowerCase().includes(m.name.split(' ')[0].toLowerCase())
+    );
+    setMaterialInfo(matchedMaterial);
 
-    // Fetch Alternatives dynamically
+    // Identify Brand Context
+    const matchedBrandKey = Object.keys(BRANDS_DB).find(b => result.summary.toUpperCase().includes(b));
+    if (matchedBrandKey) {
+        setBrandInfo({ name: matchedBrandKey, ...BRANDS_DB[matchedBrandKey] });
+    }
+
+    // Fetch Alternatives dynamically with enhanced query
     const fetchAlternatives = async () => {
         setLoadingAlternatives(true);
         try {
-             // Construct a search query based on the analysis
-             const query = `Sustainable ${result.mainMaterial} ${result.summary.split(' ')[0] || 'clothing'}`;
+             // Heuristic to build a better search query
+             
+             // 1. Extract base term from summary (first sentence/clause)
+             let summaryTerm = result.summary.split('.')[0].replace(/[^\w\s]/gi, ''); 
+             
+             // 2. Remove detected brand to find broad alternatives
+             if (matchedBrandKey) {
+                summaryTerm = summaryTerm.replace(new RegExp(matchedBrandKey, 'gi'), '');
+             }
+             
+             // 3. Remove words already in "mainMaterial" to prevent redundancy (e.g. "Organic Cotton Cotton T-Shirt")
+             const materialWords = result.mainMaterial.toLowerCase().split(' ');
+             const uniqueProductWords = summaryTerm.split(' ').filter(word => {
+                 return !materialWords.includes(word.toLowerCase()) && word.length > 2;
+             });
+             
+             const productType = uniqueProductWords.slice(0, 3).join(' ');
+
+             // 4. Construct final query
+             const query = `sustainable ${result.mainMaterial} ${productType}`.trim();
+             console.log("Searching alternatives for:", query);
+
              const data = await searchSustainableAlternatives(query);
              setAlternatives(data);
         } catch (e) {
@@ -65,9 +105,6 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
     if (!isHistoryView) {
         fetchAlternatives();
     } else {
-        // If history view, we might not have stored the rich alternatives, 
-        // so we could fetch them again or just skip. 
-        // For now, let's fetch them to ensure the view is consistent.
         fetchAlternatives();
     }
 
@@ -83,6 +120,13 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
 
   const handleAlternativeClick = () => {
     triggerPointsToast(20, "Eco-Choice Selected");
+  };
+
+  const handleFeedback = (type: 'up' | 'down') => {
+    setFeedback(type);
+    if (type === 'up') {
+        triggerPointsToast(10, "Thanks for feedback!");
+    }
   };
 
   const calculateCPW = () => {
@@ -164,31 +208,35 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
       )}
 
       {/* Premium Hero Section */}
-      <div className="relative h-[22rem] w-full flex-shrink-0 bg-stone-900 rounded-b-[3rem] overflow-hidden shadow-2xl z-10">
-        <img src={thumbnail} alt="Analyzed Item" className="w-full h-full object-cover opacity-50 mix-blend-overlay blur-sm scale-110" />
+      <div className="relative h-[22rem] w-full flex-shrink-0 bg-stone-900 rounded-b-[3rem] overflow-hidden shadow-2xl z-10 group">
+        <img 
+            src={thumbnail} 
+            alt="Analyzed Item" 
+            className="w-full h-full object-cover opacity-50 mix-blend-overlay blur-sm scale-110 transition-transform duration-[3s] group-hover:scale-100" 
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-900/60 to-transparent" />
         
         <div className="absolute inset-0 flex flex-col items-center justify-end p-8 pb-12">
             
             {/* Prominent Eco-Score Display */}
-            <div className="relative mb-4 flex flex-col items-center">
-                 {/* Score Ring */}
+            <div className="relative mb-4 flex flex-col items-center animate-fade-in-up">
+                 {/* Score Ring with fixed alignment */}
                 <div className="relative w-28 h-28 flex items-center justify-center bg-stone-800/40 backdrop-blur-xl rounded-full border border-white/10 shadow-2xl mb-2">
-                    <svg className="transform -rotate-90 w-28 h-28">
-                        <circle cx="56" cy="56" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent" className="text-stone-700/50" />
+                    <svg className="transform -rotate-90 w-full h-full p-1" viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent" className="text-stone-700/50" />
                         <circle 
-                            cx="56" cy="56" r={radius} 
+                            cx="60" cy="60" r={radius} 
                             stroke={scoreColor} 
                             strokeWidth="6" 
                             fill="transparent" 
                             strokeDasharray={circumference} 
                             strokeDashoffset={strokeDashoffset} 
                             strokeLinecap="round"
-                            className="transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                            className="transition-all duration-[1.5s] ease-out shadow-[0_0_15px_rgba(255,255,255,0.3)]"
                         />
                     </svg>
-                    <div className="absolute flex flex-col items-center justify-center">
-                        <span className="text-4xl font-black text-white leading-none tracking-tight">{result.overallScore}</span>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-4xl font-black text-white tracking-tight leading-none">{result.overallScore}</span>
                     </div>
                 </div>
 
@@ -210,12 +258,33 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                 </div>
             </div>
 
-            <p className="text-stone-300 text-sm text-center max-w-xs leading-relaxed">{result.summary.split('.')[0]}.</p>
+            <p className="text-stone-300 text-sm text-center max-w-xs leading-relaxed animate-fade-in-up delay-100">{result.summary.split('.')[0]}.</p>
+        
+            {/* User Feedback */}
+            <div className="flex gap-4 mt-4 animate-fade-in-up delay-200">
+                <button 
+                    onClick={() => handleFeedback('up')}
+                    disabled={feedback !== null}
+                    className={`p-2 rounded-full transition-all duration-300 ${feedback === 'up' ? 'bg-green-500 text-white scale-110' : 'bg-white/10 text-stone-400 hover:bg-white/20 hover:scale-105'}`}
+                    title="Accurate Analysis"
+                >
+                    {feedback === 'up' ? <Check size={16} /> : <ThumbsUp size={16} />}
+                </button>
+                <button 
+                    onClick={() => handleFeedback('down')}
+                    disabled={feedback !== null}
+                    className={`p-2 rounded-full transition-all duration-300 ${feedback === 'down' ? 'bg-red-500 text-white scale-110' : 'bg-white/10 text-stone-400 hover:bg-white/20 hover:scale-105'}`}
+                    title="Inaccurate Analysis"
+                >
+                    <ThumbsDown size={16} />
+                </button>
+            </div>
+            {feedback === 'up' && <p className="text-green-400 text-[10px] font-bold mt-2 animate-fade-in">Thanks for helping us improve!</p>}
         </div>
       </div>
 
       {/* Floating Tab Bar */}
-      <div className="px-6 -mt-8 z-20 relative">
+      <div className="px-6 -mt-8 z-20 relative animate-fade-in-up delay-300">
         <div className="bg-white dark:bg-stone-800 p-1.5 rounded-2xl shadow-xl shadow-stone-900/10 border border-stone-100 dark:border-stone-700 flex justify-between gap-1">
             {['impact', 'care', 'value'].map((tab) => (
                 <button 
@@ -240,7 +309,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
             <div className="animate-slide-up space-y-8">
                 
                 {/* Expanded Carbon Footprint Section */}
-                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 relative overflow-hidden">
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 relative overflow-hidden animate-fade-in-up delay-100 transition-all hover:shadow-md">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-xl text-orange-500">
                             <Wind size={24} />
@@ -260,10 +329,10 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                             <span>Lifecycle Breakdown</span>
                         </div>
                         <div className="h-4 w-full flex rounded-full overflow-hidden">
-                            <div style={{ width: `${carbonBreakdown.material}%` }} className="bg-orange-400" title="Material"></div>
-                            <div style={{ width: `${carbonBreakdown.manufacturing}%` }} className="bg-yellow-400" title="Manufacturing"></div>
-                            <div style={{ width: `${carbonBreakdown.transport}%` }} className="bg-blue-400" title="Transport"></div>
-                            <div style={{ width: `${carbonBreakdown.use}%` }} className="bg-green-400" title="Use Phase"></div>
+                            <div style={{ width: `${carbonBreakdown.material}%` }} className="bg-orange-400 transition-all duration-1000" title="Material"></div>
+                            <div style={{ width: `${carbonBreakdown.manufacturing}%` }} className="bg-yellow-400 transition-all duration-1000" title="Manufacturing"></div>
+                            <div style={{ width: `${carbonBreakdown.transport}%` }} className="bg-blue-400 transition-all duration-1000" title="Transport"></div>
+                            <div style={{ width: `${carbonBreakdown.use}%` }} className="bg-green-400 transition-all duration-1000" title="Use Phase"></div>
                         </div>
                         <div className="flex gap-3 mt-3 justify-center flex-wrap">
                             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-400"></div><span className="text-[10px] text-gray-500">Material</span></div>
@@ -278,7 +347,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                         <p className="text-[10px] font-bold text-gray-400 uppercase mb-3 text-center">Equivalent To</p>
                         <div className="grid grid-cols-4 gap-2">
                             {getCarbonEquivalent().map((item, idx) => (
-                                <div key={idx} className="flex flex-col items-center text-center">
+                                <div key={idx} className="flex flex-col items-center text-center hover:scale-105 transition-transform">
                                     <div className="w-8 h-8 rounded-full bg-white dark:bg-stone-700 flex items-center justify-center text-gray-400 mb-1 shadow-sm">
                                         <item.icon size={14} />
                                     </div>
@@ -290,16 +359,103 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                     </div>
                 </div>
 
+                {/* NEW: Material Details Section */}
+                {materialInfo && (
+                     <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 animate-fade-in-up delay-200 transition-all hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-xl text-green-600">
+                                <Sprout size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-ink dark:text-white text-lg">Material Details</h3>
+                                <p className="text-xs text-gray-500">Detailed Impact Stats</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-gray-50 dark:bg-stone-800 p-3 rounded-2xl text-center">
+                                <div className="text-xs text-gray-400 uppercase font-bold mb-1">Carbon</div>
+                                <div className="text-xl font-black text-ink dark:text-white">{materialInfo.carbonPerKg}<span className="text-xs font-normal text-gray-500"> kg/kg</span></div>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-stone-800 p-3 rounded-2xl text-center">
+                                <div className="text-xs text-gray-400 uppercase font-bold mb-1">Water</div>
+                                <div className="text-xl font-black text-ink dark:text-white">{materialInfo.waterPerKg}<span className="text-xs font-normal text-gray-500"> L/kg</span></div>
+                            </div>
+                             <div className="col-span-2 bg-gray-50 dark:bg-stone-800 p-3 rounded-2xl flex items-center justify-between px-4">
+                                <div className="text-xs text-gray-400 uppercase font-bold">Biodegradability</div>
+                                <div className="text-sm font-bold text-ink dark:text-white">{materialInfo.biodegradability || "Unknown"}</div>
+                            </div>
+                        </div>
+                     </div>
+                )}
+
+                {/* NEW: Brand Ethics Section */}
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 animate-fade-in-up delay-200 transition-all hover:shadow-md">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-xl text-purple-600">
+                            <Scale size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-ink dark:text-white text-lg">Brand Ethics</h3>
+                            <p className="text-xs text-gray-500">Transparency & Practices</p>
+                        </div>
+                    </div>
+                    
+                    {brandInfo ? (
+                        <div className="space-y-5">
+                            <div className="flex justify-between items-center mb-2">
+                                <h4 className="font-bold text-xl text-ink dark:text-white">{brandInfo.name}</h4>
+                                <span className="text-[10px] bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-md font-bold uppercase">{brandInfo.label}</span>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex justify-between text-xs font-bold text-gray-400 mb-1">
+                                        <span>Labor Standards</span>
+                                        <span className="text-ink dark:text-white">{brandInfo.laborScore || brandInfo.ethics}/100</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                                        <div style={{ width: `${brandInfo.laborScore || brandInfo.ethics}%` }} className="h-full bg-purple-500 rounded-full"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-xs font-bold text-gray-400 mb-1">
+                                        <span>Environmental Score</span>
+                                        <span className="text-ink dark:text-white">{brandInfo.envScore || brandInfo.transparency}/100</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                                        <div style={{ width: `${brandInfo.envScore || brandInfo.transparency}%` }} className="h-full bg-green-500 rounded-full"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-xs font-bold text-gray-400 mb-1">
+                                        <span>Transparency</span>
+                                        <span className="text-ink dark:text-white">{brandInfo.transparency}/100</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                                        <div style={{ width: `${brandInfo.transparency}%` }} className="h-full bg-blue-400 rounded-full"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center py-6 bg-gray-50 dark:bg-stone-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-stone-700">
+                             <Award className="mx-auto text-gray-300 mb-2" size={32} />
+                             <p className="text-sm text-gray-400">Brand data not available.</p>
+                             <p className="text-xs text-gray-500">Scan tag for better detection.</p>
+                        </div>
+                    )}
+                </div>
+
                 {/* Score Breakdown */}
-                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800">
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 animate-fade-in-up delay-200 transition-all hover:shadow-md">
                     <h3 className="font-bold text-lg text-ink dark:text-white mb-6">Impact Analysis</h3>
                     <div className="space-y-5">
                         {Object.entries(result.breakdown).map(([key, value], i) => (
-                            <div key={key} className="flex items-center gap-4">
+                            <div key={key} className="flex items-center gap-4 group">
                                 <div className="w-24 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">{key}</div>
                                 <div className="flex-1 h-3 bg-gray-100 dark:bg-stone-800 rounded-full overflow-hidden">
                                     <div 
-                                        className={`h-full rounded-full transition-all duration-1000 ease-out ${value > 70 ? 'bg-sage' : value > 40 ? 'bg-yellow-400' : 'bg-terracotta'}`}
+                                        className={`h-full rounded-full transition-all duration-1000 ease-out group-hover:brightness-110 ${value > 70 ? 'bg-sage' : value > 40 ? 'bg-yellow-400' : 'bg-terracotta'}`}
                                         style={{ width: `${value}%`, transitionDelay: `${i * 100}ms` }}
                                     />
                                 </div>
@@ -310,7 +466,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                 </div>
 
                 {/* Sustainable Alternatives */}
-                <div className="space-y-4">
+                <div className="space-y-4 animate-fade-in-up delay-300">
                     <div className="flex items-center justify-between">
                         <h3 className="font-bold text-lg text-ink dark:text-white flex items-center gap-2">
                              Greener Choices
@@ -373,14 +529,15 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
             </div>
         )}
 
+        {/* ... (Care and Value Tabs remain similar but with added transitions via classNames) ... */}
         {activeTab === 'care' && (
             <div className="animate-slide-up space-y-6">
                  {/* Care Guide Hero */}
-                 <div className="bg-periwinkle/20 dark:bg-periwinkle/10 rounded-3xl p-8 text-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-periwinkle/30 rounded-full blur-2xl"></div>
+                 <div className="bg-periwinkle/20 dark:bg-periwinkle/10 rounded-3xl p-8 text-center relative overflow-hidden animate-fade-in-up">
+                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-periwinkle/30 rounded-full blur-2xl animate-pulse"></div>
                     <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl"></div>
                     
-                    <Shirt className="w-12 h-12 text-periwinkle mx-auto mb-4" />
+                    <Shirt className="w-12 h-12 text-periwinkle mx-auto mb-4 animate-bounce" />
                     <h3 className="text-xl font-bold text-ink dark:text-white mb-2">Smart Care Guide</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-300 max-w-xs mx-auto">
                         Specific instructions extracted for {result.mainMaterial || (result.breakdown.material > 60 ? 'Natural Fibers' : 'Synthetic Blend')}
@@ -395,7 +552,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                         { icon: Scissors, title: "Repair", text: result.careGuide.repair, color: "text-red-500", bg: "bg-red-50 dark:bg-red-900/20" },
                         { icon: HeartHandshake, title: "Longevity", text: result.careGuide.note, color: "text-sage", bg: "bg-green-50 dark:bg-green-900/20" }
                     ].map((item, i) => (
-                        <div key={i} className="bg-white dark:bg-stone-900 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex items-start gap-4">
+                        <div key={i} className="bg-white dark:bg-stone-900 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex items-start gap-4 animate-fade-in-up hover:scale-[1.02] transition-transform" style={{ animationDelay: `${i * 100}ms` }}>
                             <div className={`p-3 rounded-xl ${item.bg} ${item.color}`}>
                                 <item.icon size={20} />
                             </div>
@@ -412,7 +569,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
         {activeTab === 'value' && (
              <div className="animate-slide-up space-y-8">
                 {/* Cost Calculator */}
-                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800">
+                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 animate-fade-in-up transition-all hover:shadow-md">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-3 bg-terracotta/10 rounded-xl text-terracotta">
                             <Calculator size={20} />
@@ -469,7 +626,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
 
                         {cpw !== null && (
                             <div className="bg-gradient-to-br from-terracotta to-orange-600 rounded-2xl p-6 text-white relative overflow-hidden animate-fade-in">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 animate-pulse"></div>
                                 <div className="relative z-10 flex justify-between items-end">
                                     <div>
                                         <p className="text-white/80 text-xs font-bold uppercase mb-1">True Cost / Wear</p>
@@ -486,7 +643,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                 </div>
 
                 {/* Local Recycling Locator */}
-                <div className="space-y-4">
+                <div className="space-y-4 animate-fade-in-up delay-100">
                      <div className="flex items-center justify-between px-2">
                         <h3 className="font-bold text-lg text-ink dark:text-white flex items-center gap-2">
                             <MapPin size={20} className="text-sage" /> Nearby Recycling
@@ -549,7 +706,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                                         href={place.uri} 
                                         target="_blank" 
                                         rel="noreferrer"
-                                        className="bg-white dark:bg-stone-900 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex items-center justify-between group hover:border-sage/50 transition-colors"
+                                        className="bg-white dark:bg-stone-900 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex items-center justify-between group hover:border-sage/50 transition-colors hover:scale-[1.01]"
                                     >
                                         <div className="flex items-center gap-4 overflow-hidden">
                                             <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0 group-hover:bg-sage/10 group-hover:text-sage transition-colors">

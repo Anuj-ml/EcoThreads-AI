@@ -1,21 +1,24 @@
+
 export const MATERIALS_DB = [
-  { name: "Cotton (Conventional)", carbonPerKg: 21.0, waterPerKg: 10000, score: 5 },
-  { name: "Cotton (Organic)", carbonPerKg: 3.8, waterPerKg: 2400, score: 9 },
-  { name: "Polyester (Virgin)", carbonPerKg: 9.5, waterPerKg: 100, score: 3 },
-  { name: "Polyester (Recycled)", carbonPerKg: 3.5, waterPerKg: 50, score: 8 },
-  { name: "Tencel/Lyocell", carbonPerKg: 3.0, waterPerKg: 150, score: 9 },
-  { name: "Wool", carbonPerKg: 13.0, waterPerKg: 120, score: 6 },
-  { name: "Denim", carbonPerKg: 33.4, waterPerKg: 3000, score: 5 },
-  { name: "Nylon", carbonPerKg: 15.0, waterPerKg: 200, score: 4 }
+  { name: "Cotton (Conventional)", carbonPerKg: 21.0, waterPerKg: 10000, score: 5, biodegradability: "High (3-5 Months)" },
+  { name: "Cotton (Organic)", carbonPerKg: 3.8, waterPerKg: 2400, score: 9, biodegradability: "High (3-5 Months)" },
+  { name: "Polyester (Virgin)", carbonPerKg: 9.5, waterPerKg: 100, score: 3, biodegradability: "None (200+ Years)" },
+  { name: "Polyester (Recycled)", carbonPerKg: 3.5, waterPerKg: 50, score: 8, biodegradability: "Low (200+ Years)" },
+  { name: "Tencel/Lyocell", carbonPerKg: 3.0, waterPerKg: 150, score: 9, biodegradability: "High (6 Weeks)" },
+  { name: "Wool", carbonPerKg: 13.0, waterPerKg: 120, score: 6, biodegradability: "High (1-5 Years)" },
+  { name: "Denim", carbonPerKg: 33.4, waterPerKg: 3000, score: 5, biodegradability: "High (10-12 Months)" },
+  { name: "Nylon", carbonPerKg: 15.0, waterPerKg: 200, score: 4, biodegradability: "None (30-40 Years)" }
 ];
 
-export const BRANDS_DB: Record<string, { ethics: number; transparency: number; label: string }> = {
-  "PATAGONIA": { ethics: 95, transparency: 90, label: "Sustainability Leader" },
-  "H&M": { ethics: 50, transparency: 70, label: "Fast Fashion (Improving)" },
-  "SHEIN": { ethics: 10, transparency: 10, label: "Ultra Fast Fashion" },
-  "LEVI'S": { ethics: 70, transparency: 60, label: "Good" },
-  "ZARA": { ethics: 40, transparency: 50, label: "Fast Fashion" },
-  "REFORMATION": { ethics: 85, transparency: 80, label: "Eco-Conscious" }
+export const BRANDS_DB: Record<string, { ethics: number; transparency: number; label: string; laborScore?: number; envScore?: number }> = {
+  "PATAGONIA": { ethics: 95, transparency: 90, label: "Sustainability Leader", laborScore: 92, envScore: 96 },
+  "H&M": { ethics: 50, transparency: 70, label: "Fast Fashion (Improving)", laborScore: 55, envScore: 60 },
+  "SHEIN": { ethics: 10, transparency: 10, label: "Ultra Fast Fashion", laborScore: 15, envScore: 10 },
+  "LEVI'S": { ethics: 70, transparency: 60, label: "Good", laborScore: 68, envScore: 75 },
+  "ZARA": { ethics: 40, transparency: 50, label: "Fast Fashion", laborScore: 45, envScore: 40 },
+  "REFORMATION": { ethics: 85, transparency: 80, label: "Eco-Conscious", laborScore: 82, envScore: 88 },
+  "KOTN": { ethics: 92, transparency: 95, label: "Ethical Supply Chain", laborScore: 95, envScore: 90 },
+  "EVERLANE": { ethics: 65, transparency: 75, label: "Radical Transparency", laborScore: 60, envScore: 70 }
 };
 
 export const PRODUCTS_DB: Record<string, any> = {

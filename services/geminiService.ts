@@ -15,7 +15,7 @@ export const analyzeSustainability = async (
   const brandsContext = JSON.stringify(BRANDS_DB);
 
   const prompt = `
-    You are the "Ensemble Fusion" layer of EcoThreads AI, an expert sustainability auditor for fashion.
+    You are the "Ensemble Fusion" layer of EcoThreads AI, utilizing advanced computer vision capabilities.
     
     CONTEXT DATA:
     1. MATERIAL IMPACT DATABASE: ${materialsContext}
@@ -26,19 +26,30 @@ export const analyzeSustainability = async (
     2. OCR Text (Tesseract): "${localAI.ocrText}"
 
     TASK:
-    Analyze the clothing item provided in the image to generate a strict, data-backed sustainability report AND a care guide.
+    Analyze the clothing item provided in the image to generate a strict, data-backed sustainability report.
+
+    ADVANCED VISUAL ANALYSIS REQUIRED:
+    1. **Brand Logo Recognition (CNN Simulation)**: 
+       - Scan the image specifically for brand logos (e.g., Nike Swoosh, Patagonia skyline, Adidas stripes) or distinctive tags.
+       - Identify the brand even if OCR fails, based on visual identity.
+       - If a brand is found, use its specific data for the 'ethics' score.
+
+    2. **High-Fidelity Material Detection (EfficientNet Simulation)**:
+       - Analyze fabric texture at a granular level. Look for:
+         - **Weave Patterns**: Twill (Denim), Jersey (Tees), Piqué (Polos).
+         - **Sheen/Luster**: High sheen often indicates Silk or Synthetics (Polyester/Nylon). Matte often indicates Cotton/Wool.
+         - **Pilling/Texture**: Fuzziness suggests Wool or Acrylic.
+       - Use these visual cues to refine the 'mainMaterial' identification beyond just the OCR text.
 
     ANALYSIS LOGIC:
     1. **Material Identification**: 
-       - PRIORITIZE OCR text for specific percentages.
-       - IF OCR is silent, INFER from visual texture (e.g., "Denim" -> Cotton).
-       - EXTRACT the "mainMaterial" string (e.g. "Recycled Polyester").
+       - Combine OCR text with Visual Texture analysis.
+       - EXTRACT the "mainMaterial" string (e.g. "Recycled Polyester", "Organic Cotton Jersey").
     
     2. **Impact Calculation**:
        - Estimate Weight based on item type.
        - Carbon Formula: (Weight * Material_CO2_Factor) + 1.5kg.
        - Estimate Carbon Breakdown % (Material extraction vs Manufacturing vs Transport vs Use).
-       - Water Usage: Compare against global averages.
 
     3. **Scoring Algorithm (0-100)**:
        - 0-30: High Impact (Virgin Synthetics, Air Freight).
@@ -46,13 +57,9 @@ export const analyzeSustainability = async (
        - 61-85: Good (Recycled materials, Natural fibers).
        - 86-100: Excellent (Organic, Regenerative).
 
-    4. **Smart Care Guide & Lifespan**:
-       - Generate washing instructions.
-       - Estimate the 'estimatedLifespan' (number of wears) based on material durability (e.g., Polyester: 50, High Quality Denim: 200).
-
     OUTPUT REQUIREMENTS:
     - Return strict JSON.
-    - **Summary**: Concise, objective, 2 sentences max.
+    - **Summary**: Concise, objective, 2 sentences max. Mention the Brand if detected.
     - **Care Guide**: Short, actionable sentences.
 
     RESPONSE FORMAT:

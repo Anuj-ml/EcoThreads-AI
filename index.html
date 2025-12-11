@@ -23,11 +23,21 @@
             },
             animation: {
               'scan': 'scan 2s linear infinite',
+              'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+              'fade-in-down': 'fadeInDown 0.6s ease-out forwards',
             },
             keyframes: {
               scan: {
                 '0%': { transform: 'translateY(0)' },
                 '100%': { transform: 'translateY(280px)' }, 
+              },
+              fadeInUp: {
+                '0%': { opacity: '0', transform: 'translateY(20px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              fadeInDown: {
+                '0%': { opacity: '0', transform: 'translateY(-20px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
               }
             }
           }
@@ -52,21 +62,29 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+      /* Hide scrollbar for cleaner UI */
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.2.1/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
-    "react/": "https://esm.sh/react@^19.2.1/",
     "react": "https://esm.sh/react@^19.2.1",
-    "lucide-react": "https://esm.sh/lucide-react@^0.560.0",
-    "@tensorflow-models/mobilenet": "https://esm.sh/@tensorflow-models/mobilenet@^2.1.1",
-    "vite": "https://esm.sh/vite@^7.2.7",
-    "html5-qrcode": "https://esm.sh/html5-qrcode@^2.3.8",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.1/",
+    "react/": "https://esm.sh/react@^19.2.1/",
     "tesseract.js": "https://esm.sh/tesseract.js@^6.0.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "@tensorflow/tfjs": "https://esm.sh/@tensorflow/tfjs@^4.22.0"
+    "@tensorflow/tfjs": "https://esm.sh/@tensorflow/tfjs@^4.22.0",
+    "@tensorflow-models/mobilenet": "https://esm.sh/@tensorflow-models/mobilenet@^2.1.1",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.560.0",
+    "html5-qrcode": "https://esm.sh/html5-qrcode@^2.3.8",
+    "vite": "https://esm.sh/vite@^7.2.7",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
