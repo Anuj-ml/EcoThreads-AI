@@ -29,11 +29,17 @@ export const AnalysisLoader: React.FC<AnalysisLoaderProps> = ({ stage }) => {
 
   return (
     <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-8 bg-cream dark:bg-stone-900 transition-colors duration-300">
-      <div className="relative">
-        <div className="w-24 h-24 rounded-full bg-periwinkle/20 dark:bg-periwinkle/10 flex items-center justify-center animate-bounce">
-          <Leaf className="w-12 h-12 text-terracotta" />
+      
+      {/* Stabilized Loader */}
+      <div className="relative w-32 h-32 flex items-center justify-center">
+        {/* Outer Ring */}
+        <div className="absolute inset-0 rounded-full border-4 border-periwinkle/10"></div>
+        {/* Spinning Ring */}
+        <div className="absolute inset-0 rounded-full border-4 border-t-terracotta border-r-transparent border-b-transparent border-l-transparent animate-spin-slow"></div>
+        {/* Center Icon */}
+        <div className="w-24 h-24 rounded-full bg-periwinkle/10 dark:bg-white/5 flex items-center justify-center relative z-10 shadow-sm">
+           <Leaf className="w-10 h-10 text-terracotta animate-pulse-slow" />
         </div>
-        <div className="absolute inset-0 rounded-full border-4 border-terracotta/10 animate-ping"></div>
       </div>
       
       <h2 className="text-3xl font-bold text-ink dark:text-white animate-fade-in-up">Analyzing Impact...</h2>

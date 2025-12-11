@@ -537,7 +537,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                     <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-periwinkle/30 rounded-full blur-2xl animate-pulse"></div>
                     <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl"></div>
                     
-                    <Shirt className="w-12 h-12 text-periwinkle mx-auto mb-4 animate-bounce" />
+                    <Shirt className="w-12 h-12 text-periwinkle mx-auto mb-4" />
                     <h3 className="text-xl font-bold text-ink dark:text-white mb-2">Smart Care Guide</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-300 max-w-xs mx-auto">
                         Specific instructions extracted for {result.mainMaterial || (result.breakdown.material > 60 ? 'Natural Fibers' : 'Synthetic Blend')}

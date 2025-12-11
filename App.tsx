@@ -327,6 +327,7 @@ export const App = () => {
             isOpen={isMenuOpen} 
             onClose={() => setIsMenuOpen(false)} 
             onNavigate={(state) => setAppState(state)}
+            onSelectHistory={handleHistorySelect}
             profile={getGamificationProfile()}
         />
 
@@ -356,10 +357,25 @@ export const App = () => {
         {/* Main Content Centered */}
         <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-8 text-center">
             
-            {/* Logo Mark */}
+            {/* New Attractive Logo */}
             <div className="mb-12 animate-fade-in-down">
-                <div className="w-20 h-20 bg-gradient-to-br from-ink to-stone-800 dark:from-white dark:to-stone-200 rounded-[2rem] flex items-center justify-center shadow-2xl mx-auto mb-6 transform rotate-3 hover:rotate-6 transition-transform">
-                    <Leaf size={40} className="text-white dark:text-ink" />
+                <div className="w-32 h-32 mx-auto mb-6 relative hover:scale-105 transition-transform duration-700">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-ink to-stone-800 dark:from-white dark:to-stone-400 rounded-3xl opacity-10 rotate-6 transform"></div>
+                    <div className="w-full h-full bg-gradient-to-br from-ink to-stone-800 dark:from-white dark:to-stone-200 rounded-[2rem] flex items-center justify-center shadow-2xl relative z-10 overflow-hidden">
+                         <svg viewBox="0 0 200 200" className="w-20 h-20 text-cream dark:text-ink">
+                             {/* Abstract Thread Spool / Leaf Composition */}
+                             <path d="M100 170 C 60 170, 30 140, 30 90 C 30 40, 100 20, 100 20 C 100 20, 170 40, 170 90 C 170 140, 140 170, 100 170 Z" 
+                                   fill="currentColor" opacity="0.1" />
+                             <path d="M100 160 V 120" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
+                             {/* Interwoven Thread Line */}
+                             <path d="M100 120 C 100 120, 50 100, 50 70 C 50 40, 80 30, 100 30 C 120 30, 150 40, 150 70 C 150 100, 100 120, 100 120" 
+                                   fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+                             {/* Veins / Stitches */}
+                             <path d="M100 40 V 110" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="6 4" opacity="0.8"/>
+                             <path d="M100 60 L 130 50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.6"/>
+                             <path d="M100 80 L 70 70" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.6"/>
+                         </svg>
+                    </div>
                 </div>
                 <h1 className="text-5xl md:text-7xl font-light text-ink dark:text-white leading-tight tracking-tighter">
                     EcoThreads

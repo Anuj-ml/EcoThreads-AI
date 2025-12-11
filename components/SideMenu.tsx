@@ -1,17 +1,36 @@
 
-import React from 'react';
-import { X, History, Home, Leaf, ShieldCheck, LogOut } from 'lucide-react';
-import { GamificationProfile, AppState } from '../types';
+import React, { useEffect, useState } from 'react';
+import { X, History, Home, Leaf, ShieldCheck, ChevronRight, Clock } from 'lucide-react';
+import { GamificationProfile, AppState, HistoryItem } from '../types';
 import { GamificationHub } from './GamificationHub';
+import { getHistory } from '../services/storageService';
 
 interface SideMenuProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigate: (state: AppState) => void;
+  onSelectHistory?: (item: HistoryItem) => void;
   profile: GamificationProfile;
 }
 
-export const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate, profile }) => {
+export const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate, onSelectHistory, profile }) => {
+  const [recentHistory, setRecentHistory] = useState<HistoryItem[]>([]);
+
+  // Refresh history whenever menu opens
+  useEffect(() => {
+    if (isOpen) {
+      const allHistory = getHistory();
+      setRecentHistory(allHistory.slice(0, 3)); // Get top 3
+    }
+  }, [isOpen]);
+
+  const handleHistoryClick = (item: HistoryItem) => {
+    if (onSelectHistory) {
+        onSelectHistory(item);
+        onClose();
+    }
+  };
+
   return (
     <>
       {/* Backdrop */}
@@ -26,9 +45,15 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate,
           
           {/* Header */}
           <div className="p-6 flex justify-between items-center border-b border-stone-200 dark:border-stone-800">
-            <div className="flex items-center gap-2">
-               <div className="w-8 h-8 bg-ink dark:bg-white rounded-lg flex items-center justify-center">
-                  <Leaf size={16} className="text-white dark:text-ink" />
+            <div className="flex items-center gap-3">
+               <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+                  <svg viewBox="0 0 200 200" className="w-full h-full text-ink dark:text-white">
+                      <path d="M100 170 C 60 170, 30 140, 30 90 C 30 40, 100 20, 100 20 C 100 20, 170 40, 170 90 C 170 140, 140 170, 100 170 Z" 
+                            fill="currentColor" opacity="0.1" />
+                      <path d="M100 160 V 120" stroke="currentColor" strokeWidth="12" strokeLinecap="round" />
+                      <path d="M100 120 C 100 120, 50 100, 50 70 C 50 40, 80 30, 100 30 C 120 30, 150 40, 150 70 C 150 100, 100 120, 100 120" 
+                            fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                </div>
                <span className="font-bold text-lg text-ink dark:text-white tracking-tight">EcoThreads</span>
             </div>
@@ -61,8 +86,37 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate,
               <div className="p-2 bg-stone-200 dark:bg-stone-700 rounded-lg group-hover:bg-periwinkle group-hover:text-ink transition-colors">
                 <History size={20} />
               </div>
-              Scan History
+              Full Scan History
             </button>
+
+            {/* Recent Scans Section */}
+            {recentHistory.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-stone-100 dark:border-stone-800 animate-fade-in">
+                    <div className="px-4 mb-3 text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        <Clock size={12} /> Recent Scans
+                    </div>
+                    <div className="space-y-2">
+                        {recentHistory.map((item) => (
+                            <button
+                                key={item.id}
+                                onClick={() => handleHistoryClick(item)}
+                                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white dark:hover:bg-stone-800 transition-all group text-left"
+                            >
+                                <img src={item.thumbnail} alt="" className="w-10 h-10 rounded-lg object-cover bg-gray-200" />
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-sm font-bold text-ink dark:text-white truncate">
+                                        {item.result.summary.split('.')[0] || "Unknown Item"}
+                                    </div>
+                                    <div className="text-[10px] text-gray-500 truncate">
+                                        {new Date(item.timestamp).toLocaleDateString()}
+                                    </div>
+                                </div>
+                                <ChevronRight size={14} className="text-gray-300 group-hover:text-terracotta" />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="pt-4 mt-4 border-t border-stone-100 dark:border-stone-800">
                <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">About</div>
@@ -73,7 +127,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate,
           </nav>
           
           <div className="p-6 border-t border-stone-200 dark:border-stone-800">
-             <p className="text-xs text-center text-gray-400">v1.2.0 • Offline Ready</p>
+             <p className="text-xs text-center text-gray-400">v1.2.1 • Live Search Active</p>
           </div>
         </div>
       </div>

@@ -283,18 +283,18 @@ export const findRecyclingCenters = async (lat: number, lng: number): Promise<Re
 export const searchSustainableAlternatives = async (query: string): Promise<AlternativeProduct[]> => {
     try {
         const prompt = `
-        Find 4 real, available sustainable fashion products matching "${query}".
-        Focus on recognized sustainable brands (e.g., Patagonia, Reformation, Everlane, Organic Basics, Kotn).
+        Task: Find 4 real, available sustainable fashion products matching "${query}". 
+        Use the Google Search tool to find actual product pages.
         
-        Return a valid JSON array of objects. Each object must have:
-        - "name": Product Name
-        - "brand": Brand Name
-        - "price": Price (approx)
-        - "sustainabilityFeature": Short reason why it's eco-friendly (max 5 words)
-        - "url": URL to product page (must be a valid URL starting with http)
-        - "image": A direct image URL for the product if you can find one, otherwise return "default".
+        Strict Requirements:
+        1. "name": The exact product name from the search result.
+        2. "brand": The brand name.
+        3. "price": Approximate price if visible (e.g. "$45"), otherwise estimate based on brand.
+        4. "sustainabilityFeature": Short reason why it's eco-friendly (max 5 words).
+        5. "url": You MUST provide the direct URL to the product page found in the search results.
         
-        Strictly format the output as a JSON array only. No markdown ticks.
+        Output format:
+        Return ONLY a raw JSON array of objects. Do not wrap in markdown code blocks.
         `;
 
         const response = await ai.models.generateContent({
@@ -305,24 +305,54 @@ export const searchSustainableAlternatives = async (query: string): Promise<Alte
             }
         });
 
+        // 1. Try to parse the model's JSON text response
+        let products: AlternativeProduct[] = [];
         const text = response.text || "";
         
-        // Clean markdown code blocks if present
-        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        let products: AlternativeProduct[] = [];
         try {
+            const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
             products = JSON.parse(jsonStr);
         } catch (e) {
-            console.warn("Failed to parse alternatives JSON", e);
-            return [];
+            console.warn("Model did not return valid JSON. Falling back to Grounding Chunks.", e);
         }
 
-        // Validate and clean up
-        return products.map(p => ({
-            ...p,
-            image: (p.image && p.image.startsWith('http')) ? p.image : `https://source.unsplash.com/featured/?${encodeURIComponent(p.name + " " + p.brand)}`, // Unsplash fallback
-        }));
+        // 2. Extract real URLs from Grounding Metadata
+        // This is crucial because the model might halluciante URLs in the text JSON.
+        // We will prioritize URLs from the Grounding Chunks if the JSON URLs look fake or generic.
+        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+        const validLinks = groundingChunks
+            .map((c: any) => c.web)
+            .filter((web: any) => web && web.uri && web.title);
+
+        // If JSON parsing failed entirely, construct products from Grounding Chunks directly
+        if (products.length === 0 && validLinks.length > 0) {
+            console.log("Using Grounding Chunks for products");
+            return validLinks.slice(0, 4).map((link: any) => ({
+                name: link.title,
+                brand: "Verified Source",
+                price: "Check Site",
+                sustainabilityFeature: "Eco-Friendly Option",
+                url: link.uri,
+                image: `https://source.unsplash.com/featured/?fashion,sustainable,${encodeURIComponent(query.split(' ')[0])}`
+            }));
+        }
+
+        // 3. Validation and Image Assignment
+        return products.map((p, index) => {
+            // If the model provided a dummy URL, try to replace it with a real one from grounding
+            // Simple heuristic: if we have a valid link at this index, use it.
+            let finalUrl = p.url;
+            if ((!p.url || p.url.includes('example.com') || p.url === '#') && validLinks[index]) {
+                finalUrl = validLinks[index].uri;
+            }
+
+            return {
+                ...p,
+                url: finalUrl,
+                // Fallback image since Google Search tool doesn't always provide image URLs in standard chunks
+                image: (p.image && p.image.startsWith('http')) ? p.image : `https://source.unsplash.com/featured/?clothing,${encodeURIComponent(p.name)}`
+            };
+        });
 
     } catch (error) {
         console.error("Alternatives Search Error:", error);
