@@ -25,6 +25,7 @@ export interface AnalysisResult {
     url?: string; // Link to product
   }>;
   summary: string;
+  estimatedLifespan: number; // Estimated number of wears
   careGuide: {
     wash: string;
     dry: string;
@@ -43,6 +44,21 @@ export interface HistoryItem {
   timestamp: number;
   result: AnalysisResult;
   thumbnail: string; // Base64 data URI
+}
+
+export interface GamificationProfile {
+  points: number;
+  level: 'Seed' | 'Sprout' | 'Sapling' | 'Tree' | 'Forest';
+  badges: string[];
+  scansCompleted: number;
+}
+
+export interface RecyclingResult {
+  text: string;
+  places: Array<{
+    title: string;
+    uri: string;
+  }>;
 }
 
 export enum AppState {

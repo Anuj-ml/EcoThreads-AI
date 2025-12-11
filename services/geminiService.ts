@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, LocalAIResult } from "../types";
+import { AnalysisResult, LocalAIResult, RecyclingResult } from "../types";
 import { MATERIALS_DB, BRANDS_DB } from "../data/knowledgeBase";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -44,9 +44,9 @@ export const analyzeSustainability = async (
        - 61-85: Good (Recycled materials, Natural fibers).
        - 86-100: Excellent (Organic, Regenerative).
 
-    4. **Smart Care Guide**:
-       - Generate specific, eco-friendly washing instructions based on the inferred material (e.g., "Wash cold to reduce microplastics" for polyester).
-       - Provide a repair tip (e.g., "Darn small holes immediately" for knits).
+    4. **Smart Care Guide & Lifespan**:
+       - Generate washing instructions.
+       - Estimate the 'estimatedLifespan' (number of wears) based on material durability (e.g., Polyester: 50, High Quality Denim: 200).
 
     OUTPUT REQUIREMENTS:
     - Return strict JSON.
@@ -106,6 +106,7 @@ export const analyzeSustainability = async (
               items: { type: Type.STRING }
             },
             summary: { type: Type.STRING },
+            estimatedLifespan: { type: Type.INTEGER, description: "Estimated number of wears before end of life" },
             careGuide: {
                 type: Type.OBJECT,
                 properties: {
@@ -141,5 +142,46 @@ export const analyzeSustainability = async (
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
     throw new Error("Sustainability analysis failed. Please ensure image is clear and try again.");
+  }
+};
+
+export const findRecyclingCenters = async (lat: number, lng: number): Promise<RecyclingResult> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `Find 3 closest textile recycling centers or clothing donation drop-off points near these coordinates: ${lat}, ${lng}. Return a short markdown list with names and why they are good.`,
+      config: {
+        tools: [{googleMaps: {}}],
+        toolConfig: {
+          retrievalConfig: {
+            latLng: {
+              latitude: lat,
+              longitude: lng
+            }
+          }
+        }
+      },
+    });
+
+    const text = response.text || "No results found.";
+    
+    // Extract grounding chunks for links
+    const places: Array<{title: string, uri: string}> = [];
+    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    
+    if (chunks) {
+      chunks.forEach((chunk: any) => {
+        if (chunk.web?.uri && chunk.web?.title) {
+            places.push({ title: chunk.web.title, uri: chunk.web.uri });
+        } else if (chunk.maps?.uri && chunk.maps?.title) {
+            places.push({ title: chunk.maps.title, uri: chunk.maps.uri });
+        }
+      });
+    }
+
+    return { text, places };
+  } catch (error) {
+    console.error("Recycling Locator Error:", error);
+    throw new Error("Could not find recycling centers.");
   }
 };

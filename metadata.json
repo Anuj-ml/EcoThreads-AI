@@ -2,6 +2,7 @@
   "name": "EcoThreads AI",
   "description": "Scan for Earth. A sustainability scanner for fashion using Hybrid AI (TF.js, Tesseract, Gemini).",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "geolocation"
   ]
 }

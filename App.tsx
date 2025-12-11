@@ -1,13 +1,16 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Upload, ArrowRight, ScanLine, Barcode, History, AlertCircle, X, Moon, Sun, Loader2 } from 'lucide-react';
 import { AppState, AnalysisResult, LocalAIResult, HistoryItem } from './types';
 import { classifyImage } from './services/tensorFlowService';
 import { extractTextFromImage } from './services/ocrService';
 import { analyzeSustainability } from './services/geminiService';
+import { getGamificationProfile } from './services/storageService';
 import { AnalysisLoader } from './components/AnalysisLoader';
 import { ResultsDashboard } from './components/ResultsDashboard';
 import { BarcodeScanner } from './components/BarcodeScanner';
 import { ScanHistory } from './components/ScanHistory';
+import { GamificationHub } from './components/GamificationHub';
 import { PRODUCTS_DB } from './data/knowledgeBase';
 
 export const App = () => {
@@ -212,23 +215,30 @@ export const App = () => {
         <div className="absolute top-10 right-10 w-20 h-20 bg-terracotta rounded-full opacity-20 blur-xl"></div>
         <div className="absolute bottom-20 left-10 w-32 h-32 bg-periwinkle rounded-full opacity-20 blur-xl"></div>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center z-10">
-            <h1 className="text-5xl font-bold text-ink dark:text-white mb-2 transition-colors">EcoThreads</h1>
-            <h2 className="text-xl font-medium text-terracotta mb-8">Scan for Earth</h2>
+        <div className="flex-1 flex flex-col items-center justify-center p-8 z-10 w-full max-w-md mx-auto">
+            {/* Gamification Hub */}
+            <div className="w-full mb-8">
+               <GamificationHub profile={getGamificationProfile()} />
+            </div>
+
+            <div className="text-center mb-8">
+                <h1 className="text-5xl font-bold text-ink dark:text-white mb-2 transition-colors">EcoThreads</h1>
+                <h2 className="text-xl font-medium text-terracotta">Scan for Earth</h2>
+            </div>
             
-            <div className="relative w-64 h-64 mb-10 group cursor-pointer" onClick={handleStart}>
+            <div className="relative w-56 h-56 mb-10 group cursor-pointer mx-auto" onClick={handleStart}>
                  <img src="https://picsum.photos/id/445/500/500" className="w-full h-full object-cover rounded-full border-4 border-white dark:border-stone-800 shadow-xl transition-colors" alt="Fashion" />
                  <div className="absolute -bottom-4 -right-4 bg-white dark:bg-stone-800 p-4 rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
                     <ScanLine className="w-8 h-8 text-terracotta" />
                  </div>
             </div>
 
-            <p className="text-gray-600 dark:text-gray-400 mb-10 max-w-xs text-lg transition-colors">
+            <p className="text-gray-600 dark:text-gray-400 mb-10 max-w-xs text-lg transition-colors text-center mx-auto">
                 Instantly analyze your wardrobe's impact via 
                 <span className="font-bold text-ink dark:text-white"> AI Fusion & Barcodes</span>.
             </p>
 
-            <div className="flex gap-4">
+            <div className="flex gap-4 justify-center">
                 <button 
                     onClick={handleStart}
                     className="bg-ink dark:bg-white text-white dark:text-ink px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:scale-105 transition-all flex items-center gap-3"
