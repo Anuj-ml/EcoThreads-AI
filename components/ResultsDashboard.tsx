@@ -183,6 +183,18 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
 
   // Helper for Carbon Context
   const getCarbonEquivalent = () => {
+    // If we have dynamic data from Gemini, use it. Otherwise, fallback to heuristic calculation.
+    if (result.carbonFootprint.realWorldImpact) {
+        const impact = result.carbonFootprint.realWorldImpact;
+        return [
+            { icon: Smartphone, label: "Phone Charges", value: impact.smartphones.toLocaleString() }, 
+            { icon: Car, label: "Miles Driven", value: impact.milesDriven.toFixed(1) }, 
+            { icon: Coffee, label: "Kettles Boiled", value: impact.kettlesBoiled.toLocaleString() }, 
+            { icon: Zap, label: "LED Hours", value: impact.ledHours.toLocaleString() } 
+        ];
+    }
+
+    // Fallback for older scans or unexpected data structure
     const val = parseFloat(result.carbonFootprint.value) || 10;
     return [
         { icon: Smartphone, label: "Phone Charges", value: Math.round(val * 120).toLocaleString() }, 
@@ -231,18 +243,21 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
       {/* Social Proof Modal */}
       {showSocialModal && <CommunityImpactModal onClose={() => setShowSocialModal(false)} />}
 
-      {/* Navigation & Social Button */}
-      <div className="absolute top-6 left-6 z-30 flex items-center gap-3">
+      {/* Left Menu Button */}
+      <div className="absolute top-6 left-6 z-30">
           <button onClick={onOpenMenu} className="group p-3 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full transition-all duration-300 active:scale-95 border border-white/10">
             <div className="flex flex-col gap-1.5 items-end">
                 <span className="w-6 h-0.5 bg-white rounded-full group-hover:w-8 transition-all duration-300"></span>
                 <span className="w-4 h-0.5 bg-white rounded-full group-hover:w-8 transition-all duration-300 delay-75"></span>
             </div>
           </button>
-          
+      </div>
+
+      {/* Right Social Button */}
+      <div className="absolute top-6 right-6 z-30">
           <button 
             onClick={() => setShowSocialModal(true)}
-            className="p-3 bg-blue-600/80 hover:bg-blue-600 backdrop-blur-md rounded-full text-white shadow-lg animate-pulse-slow border border-white/10"
+            className="p-3 bg-blue-600/80 hover:bg-blue-600 backdrop-blur-md rounded-full text-white shadow-lg animate-pulse-slow border border-white/10 transition-all active:scale-95"
             title="Community Impact"
           >
               <Globe size={20} />

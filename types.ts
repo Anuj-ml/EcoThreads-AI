@@ -18,6 +18,12 @@ export interface AnalysisResult {
         transport: number;
         use: number;
     };
+    realWorldImpact?: { // New dynamic field
+        smartphones: number; // charges
+        milesDriven: number; // miles
+        kettlesBoiled: number; // count
+        ledHours: number; // hours
+    };
   };
   waterUsage: {
     saved: number; // Liters

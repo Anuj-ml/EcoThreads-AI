@@ -333,7 +333,7 @@ export const App = () => {
   };
 
   const renderLanding = () => (
-    <div className="flex flex-col h-screen bg-cream dark:bg-[#0a0a0a] transition-colors duration-500 relative overflow-hidden font-sans selection:bg-terracotta selection:text-white">
+    <div className="flex flex-col h-full bg-cream dark:bg-[#0a0a0a] transition-colors duration-500 relative overflow-hidden font-sans selection:bg-terracotta selection:text-white">
         {renderError()}
         
         {/* Background Texture - Dot Grid */}
@@ -455,7 +455,7 @@ export const App = () => {
   );
 
   const renderScanning = () => (
-    <div className="flex flex-col h-screen bg-black relative">
+    <div className="flex flex-col h-full bg-black relative overflow-hidden touch-none">
         {renderError()}
         <div className="flex-1 flex items-center justify-center bg-stone-900 relative overflow-hidden">
             <video 
@@ -531,7 +531,7 @@ export const App = () => {
         </div>
 
         {/* Controls */}
-        <div className="h-40 bg-black flex items-center justify-around px-8 rounded-t-3xl -mt-6 z-30 relative border-t border-white/10">
+        <div className="h-40 flex-shrink-0 bg-black flex items-center justify-around px-8 rounded-t-3xl -mt-6 z-30 relative border-t border-white/10">
             <input 
                 type="file" 
                 accept="image/*" 
@@ -578,7 +578,7 @@ export const App = () => {
   );
 
   return (
-    <div className="max-w-md mx-auto h-screen shadow-2xl overflow-hidden font-sans relative bg-cream dark:bg-stone-900">
+    <div className="max-w-md mx-auto h-[100dvh] shadow-2xl overflow-hidden font-sans relative bg-cream dark:bg-stone-900">
       <SideMenu 
           isOpen={isMenuOpen} 
           onClose={() => setIsMenuOpen(false)} 

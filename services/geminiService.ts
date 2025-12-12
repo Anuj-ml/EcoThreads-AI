@@ -130,7 +130,7 @@ export const analyzeSustainability = async (
     Analyze the clothing item image. Generate a sustainability report with deep traceability and repairability.
     
     1. **Identify Material**: Combine OCR & Visuals. EXTRACT "mainMaterial".
-    2. **Impact**: Estimate Carbon.
+    2. **Impact**: Estimate Carbon and generate "Real World Impact" equivalents (smartphones charged, miles driven, etc).
     3. **Score**: 0-100 based on material/ethics.
     4. **Supply Chain**: Estimate a PLAUSIBLE 3-step journey (Raw Fiber -> Processing -> Assembly).
     5. **Activism**: Write a Tweet and Email to the brand.
@@ -188,6 +188,15 @@ export const analyzeSustainability = async (
                           manufacturing: { type: Type.NUMBER },
                           transport: { type: Type.NUMBER },
                           use: { type: Type.NUMBER }
+                      }
+                  },
+                  realWorldImpact: {
+                      type: Type.OBJECT,
+                      properties: {
+                          smartphones: { type: Type.INTEGER, description: "Equivalent smartphone charges" },
+                          milesDriven: { type: Type.NUMBER, description: "Equivalent miles driven in a standard car" },
+                          kettlesBoiled: { type: Type.INTEGER, description: "Equivalent electric kettles boiled" },
+                          ledHours: { type: Type.INTEGER, description: "Hours of LED bulb usage" }
                       }
                   }
                 }
@@ -412,6 +421,8 @@ export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResu
     (brandData.ethics * 0.3) + 
     (brandData.transparency * 0.2)
   );
+  
+  const baseCarbon = foundMaterial.carbonPerKg;
 
   return {
     overallScore: score,
@@ -424,9 +435,15 @@ export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResu
       transparency: brandData.transparency
     },
     carbonFootprint: {
-      value: `${foundMaterial.carbonPerKg}kg CO2e`,
+      value: `${baseCarbon}kg CO2e`,
       comparison: "Estimated offline",
-      breakdown: { material: 50, manufacturing: 30, transport: 10, use: 10 }
+      breakdown: { material: 50, manufacturing: 30, transport: 10, use: 10 },
+      realWorldImpact: {
+          smartphones: Math.round(baseCarbon * 120),
+          milesDriven: Number((baseCarbon * 2.5).toFixed(1)),
+          kettlesBoiled: Math.round(baseCarbon * 15),
+          ledHours: Math.round(baseCarbon * 200)
+      }
     },
     waterUsage: { saved: 0, comparison: "Data unavailable" },
     certifications: ["Mode: Offline/Local"],
