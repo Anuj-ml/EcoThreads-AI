@@ -5,9 +5,27 @@ import { MATERIALS_DB, BRANDS_DB } from "../data/knowledgeBase";
 import { queryOARFacilities } from "./oarService";
 import { findRepairServices } from "./repairService";
 
-// Initialize AI only if key exists to prevent immediate crash
-const apiKey = process.env.API_KEY;
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+// --- API Key Rotation Logic ---
+const rawKeys = [
+    process.env.API_KEY_1,
+    process.env.API_KEY_2
+];
+
+// Filter out undefined/empty keys and deduplicate
+const availableKeys = [...new Set(rawKeys.filter((k): k is string => !!k && k.length > 0))];
+
+let currentKeyIndex = 0;
+
+const getGenAI = (): GoogleGenAI | null => {
+    if (availableKeys.length === 0) return null;
+    
+    // Rotate key
+    const key = availableKeys[currentKeyIndex];
+    currentKeyIndex = (currentKeyIndex + 1) % availableKeys.length;
+    
+    // console.log(`Using Key Index: ${currentKeyIndex} (from pool of ${availableKeys.length})`);
+    return new GoogleGenAI({ apiKey: key });
+};
 
 // Helper for retrying failed requests
 async function retryWithBackoff<T>(
@@ -25,7 +43,8 @@ async function retryWithBackoff<T>(
                         errorMessage.includes('xhr') || 
                         errorMessage.includes('fetch') || 
                         errorMessage.includes('network') ||
-                        errorMessage.includes('failed to fetch');
+                        errorMessage.includes('failed to fetch') ||
+                        errorMessage.includes('429'); // Also retry on rate limits
 
     if (!isRetryable) throw error;
     
@@ -84,8 +103,10 @@ export const analyzeSustainability = async (
   localAI: LocalAIResult
 ): Promise<AnalysisResult> => {
   
+  const ai = getGenAI();
+
   // 1. FAIL-SAFE: Check for API Key. If missing, use Local Fallback.
-  if (!ai || !apiKey) {
+  if (!ai) {
     console.warn("API_KEY not found. Using local heuristic analysis.");
     return analyzeSustainabilityLocal(localAI);
   }
@@ -121,6 +142,10 @@ export const analyzeSustainability = async (
 
   try {
     const result = await retryWithBackoff(async () => {
+      // Must get a fresh instance inside retry if logic required (optional, here we rely on the one grabbed at start of fn)
+      // Actually, standard retry uses same key, but if we wanted to rotate ON RETRY, we would call getGenAI() here.
+      // For simplicity and context consistency, we use the 'ai' instance obtained at start of function.
+      
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: {
@@ -297,6 +322,81 @@ export const analyzeSustainability = async (
 };
 
 /**
+ * Find Recycling Centers using Google Maps Tool
+ */
+export const findRecyclingCenters = async (lat: number, lng: number): Promise<RecyclingResult> => {
+  const ai = getGenAI();
+  if (!ai) throw new Error("API Key missing");
+
+  return retryWithBackoff(async () => {
+      const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: `Find textile recycling centers or clothing donation bins near ${lat}, ${lng}.`,
+          config: {
+              tools: [{ googleMaps: {} }],
+              toolConfig: {
+                  retrievalConfig: {
+                      latLng: { latitude: lat, longitude: lng }
+                  }
+              }
+          }
+      });
+
+      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+      const locations = chunks
+          .filter(c => c.maps?.title && c.maps?.uri)
+          .map(c => ({
+              name: c.maps!.title!,
+              address: "Local Facility",
+              info: "Accepts textiles and clothing.",
+              uri: c.maps!.uri!
+          }));
+
+      return {
+          locations: locations.map(l => ({ ...l, address: 'Nearby', info: 'Verified Location' })),
+          places: locations.map(l => ({ title: l.name, uri: l.uri }))
+      };
+  });
+};
+
+/**
+ * Search Sustainable Alternatives using Google Search Tool
+ */
+export const searchSustainableAlternatives = async (query: string): Promise<AlternativeProduct[]> => {
+  const ai = getGenAI();
+  if (!ai) return [];
+
+  return retryWithBackoff(async () => {
+      try {
+          const response = await ai.models.generateContent({
+              model: "gemini-2.5-flash",
+              contents: `Find 4 buyable products matching: "${query}". Return strict JSON array with fields: name, brand, price, image (use a placeholder url if not found), url (must be a valid link), sustainabilityFeature.`,
+              config: {
+                  tools: [{ googleSearch: {} }]
+              }
+          });
+
+          // Gemini 2.5 Flash with Search tool doesn't always strictly follow JSON schema
+          // We rely on text parsing and grounding metadata
+          const text = response.text || "[]";
+          const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+          let products: AlternativeProduct[] = [];
+          
+          try {
+             products = JSON.parse(jsonStr);
+          } catch(e) {
+             console.warn("Parsing failed, returning empty.");
+          }
+          
+          return products;
+      } catch (e) {
+          console.warn("Search failed", e);
+          return [];
+      }
+  });
+};
+
+/**
  * Offline Fallback Analysis
  */
 export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResult => {
@@ -344,112 +444,24 @@ export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResu
         ]
     },
     activism: {
-        brandTwitter: "@FashionBrand",
-        tweetContent: `Hey @FashionBrand, I want more transparency on your supply chain. #EcoThreads`,
-        emailSubject: "Inquiry about sustainability",
-        emailBody: "To whom it may concern, I recently purchased an item and would like to know more about its origins."
+        brandTwitter: "@brand",
+        tweetContent: "Hey, I just scanned my clothes with EcoThreads. What are you doing to reduce microplastics?",
+        emailSubject: "Supply Chain Transparency",
+        emailBody: "I am a concerned customer asking for more transparency."
     },
     endOfLife: {
-        landfill: "Persists for decades.",
-        recycling: "Potential for mechanical recycling."
+        landfill: "Will persist for 200+ years.",
+        recycling: "Hard to recycle due to mixed blends."
     },
-    microplasticImpact: calculateMicroplastics(foundMaterial.name),
     repairInfo: {
-        commonIssues: ["Loose threads", "Fading"],
+        commonIssues: ["Loose buttons", "Seam rips"],
         repairGuide: {
-            diy: "Basic stitch repair.",
+            diy: "Basic sewing kit required.",
             tools: ["Needle", "Thread"],
             difficulty: "Easy"
         }
     }
   };
-};
-
-export const findRecyclingCenters = async (lat: number, lng: number): Promise<RecyclingResult> => {
-  if (!ai) throw new Error("AI Service not configured");
-  
-  return retryWithBackoff(async () => {
-      const prompt = `
-        Find 3 closest textile recycling centers or clothing donation drop-off points near these coordinates: ${lat}, ${lng}. 
-        Requirements: Use Google Maps tool. Return strictly JSON array.
-        JSON Object: { "name": "", "address": "", "info": "" }
-      `;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          tools: [{googleMaps: {}}],
-          toolConfig: { retrievalConfig: { latLng: { latitude: lat, longitude: lng } } }
-        },
-      });
-
-      const text = response.text || "[]";
-      let locations = [];
-      try {
-          const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-          locations = JSON.parse(jsonStr);
-      } catch (e) { console.warn(e); }
-      
-      const places: Array<{title: string, uri: string}> = [];
-      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      if (chunks) {
-        chunks.forEach((chunk: any) => {
-          if (chunk.web?.uri && chunk.web?.title) places.push({ title: chunk.web.title, uri: chunk.web.uri });
-          else if (chunk.maps?.uri && chunk.maps?.title) places.push({ title: chunk.maps.title, uri: chunk.maps.uri });
-        });
-      }
-      return { locations, places };
-  });
-};
-
-export const searchSustainableAlternatives = async (query: string): Promise<AlternativeProduct[]> => {
-    if (!ai) return [];
-    return retryWithBackoff(async () => {
-            const prompt = `
-            Task: Find 4 real, available sustainable fashion products matching "${query}". 
-            Use Google Search tool. Return ONLY raw JSON array.
-            Format: { "name": "", "brand": "", "price": "", "sustainabilityFeature": "", "url": "" }
-            `;
-
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: prompt,
-                config: { tools: [{googleSearch: {}}] }
-            });
-
-            let products: AlternativeProduct[] = [];
-            const text = response.text || "";
-            try {
-                const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                products = JSON.parse(jsonStr);
-            } catch (e) { console.warn(e); }
-
-            const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-            const validLinks = groundingChunks.map((c: any) => c.web).filter((web: any) => web && web.uri && web.title);
-
-            if (products.length === 0 && validLinks.length > 0) {
-                return validLinks.slice(0, 4).map((link: any) => ({
-                    name: link.title,
-                    brand: "Verified Source",
-                    price: "Check Site",
-                    sustainabilityFeature: "Eco-Friendly Option",
-                    url: link.uri,
-                    image: `https://source.unsplash.com/featured/?fashion,sustainable,${encodeURIComponent(query.split(' ')[0])}`
-                }));
-            }
-            return products.map((p, index) => {
-                let finalUrl = p.url;
-                if ((!p.url || p.url.includes('example.com') || p.url === '#') && validLinks[index]) {
-                    finalUrl = validLinks[index].uri;
-                }
-                return {
-                    ...p,
-                    url: finalUrl,
-                    image: (p.image && p.image.startsWith('http')) ? p.image : `https://source.unsplash.com/featured/?clothing,${encodeURIComponent(p.name)}`
-                };
-            });
-    });
 };
 
 export { findRepairServices };

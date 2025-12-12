@@ -7,9 +7,10 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // This maps your Vercel Environment Variable "API_KEY" 
-      // to "process.env.API_KEY" in the browser code.
-      'process.env.API_KEY': JSON.stringify(env.API_KEY)
+      // Maps Vercel Environment Variables to "process.env" in the browser code.
+      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      'process.env.API_KEY_1': JSON.stringify(env.API_KEY_1),
+      'process.env.API_KEY_2': JSON.stringify(env.API_KEY_2)
     }
   };
 });

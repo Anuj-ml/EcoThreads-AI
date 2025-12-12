@@ -27,6 +27,9 @@ export const App = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cameraFacingMode, setCameraFacingMode] = useState<'environment' | 'user'>('environment');
   
+  // Check if any API key is available
+  const hasApiKey = !!(process.env.API_KEY || process.env.API_KEY_1 || process.env.API_KEY_2);
+
   // Scanning overlay state
   const [scanGuidance, setScanGuidance] = useState<{text: string, color: string}>({ text: "Searching...", color: "border-white/30" });
   
@@ -454,10 +457,10 @@ export const App = () => {
         </div>
         
         {/* Footer Status */}
-        {(isOffline || !process.env.API_KEY) && (
+        {(isOffline || !hasApiKey) && (
             <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none">
                 <span className="bg-orange-500/10 backdrop-blur-md border border-orange-500/20 text-orange-500 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">
-                    <Zap size={10} className="fill-current" /> {!process.env.API_KEY ? 'Demo / Local Mode' : 'Offline Mode'}
+                    <Zap size={10} className="fill-current" /> {!hasApiKey ? 'Demo / Local Mode' : 'Offline Mode'}
                 </span>
             </div>
         )}
@@ -512,10 +515,10 @@ export const App = () => {
                     {scanGuidance.text}
                 </p>
                 
-                {(isOffline || !process.env.API_KEY) && (
+                {(isOffline || !hasApiKey) && (
                      <div className="absolute top-[18%] left-0 right-0 text-center">
                         <span className="inline-flex items-center gap-2 px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-xs font-bold text-white/80 border border-white/10">
-                            <Zap size={10} className="text-orange-400" /> {!process.env.API_KEY ? 'Demo Mode' : 'Offline Mode'}
+                            <Zap size={10} className="text-orange-400" /> {!hasApiKey ? 'Demo Mode' : 'Offline Mode'}
                         </span>
                     </div>
                 )}

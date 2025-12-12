@@ -2,8 +2,26 @@
 import { GoogleGenAI } from "@google/genai";
 import { RepairLocation } from "../types";
 
-const apiKey = process.env.API_KEY;
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+// --- API Key Rotation Logic ---
+const rawKeys = [
+    process.env.API_KEY_1,
+    process.env.API_KEY_2
+];
+
+// Filter out undefined/empty keys and deduplicate
+const availableKeys = [...new Set(rawKeys.filter((k): k is string => !!k && k.length > 0))];
+
+let currentKeyIndex = 0;
+
+const getGenAI = (): GoogleGenAI | null => {
+    if (availableKeys.length === 0) return null;
+    
+    // Rotate key
+    const key = availableKeys[currentKeyIndex];
+    currentKeyIndex = (currentKeyIndex + 1) % availableKeys.length;
+    
+    return new GoogleGenAI({ apiKey: key });
+};
 
 async function retryWithBackoff<T>(
     fn: () => Promise<T>,
@@ -20,6 +38,7 @@ async function retryWithBackoff<T>(
 }
 
 export const findRepairServices = async (lat: number, lng: number): Promise<RepairLocation[]> => {
+    const ai = getGenAI();
     if (!ai) return [];
 
     return retryWithBackoff(async () => {
