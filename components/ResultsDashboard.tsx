@@ -16,9 +16,10 @@ interface ResultsDashboardProps {
   thumbnail: string;
   onReset: () => void;
   isHistoryView: boolean;
+  onOpenMenu: () => void;
 }
 
-export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thumbnail, onReset, isHistoryView }) => {
+export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thumbnail, onReset, isHistoryView, onOpenMenu }) => {
   const [alternatives, setAlternatives] = useState<AlternativeProduct[]>([]);
   const [loadingAlternatives, setLoadingAlternatives] = useState(false);
   
@@ -207,6 +208,19 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
             </div>
         </div>
       )}
+
+      {/* Navigation Button Overlay */}
+      <div className="absolute top-6 left-6 z-30">
+          <button 
+            onClick={onOpenMenu}
+            className="group p-3 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full transition-all duration-300 active:scale-95 border border-white/10"
+          >
+            <div className="flex flex-col gap-1.5 items-end">
+                <span className="w-6 h-0.5 bg-white rounded-full group-hover:w-8 transition-all duration-300"></span>
+                <span className="w-4 h-0.5 bg-white rounded-full group-hover:w-8 transition-all duration-300 delay-75"></span>
+            </div>
+          </button>
+      </div>
 
       {/* Premium Hero Section */}
       <div className="relative h-[22rem] w-full flex-shrink-0 bg-stone-900 rounded-b-[3rem] overflow-hidden shadow-2xl z-10 group">

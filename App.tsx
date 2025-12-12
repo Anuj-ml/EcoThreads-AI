@@ -320,14 +320,6 @@ export const App = () => {
     <div className="flex flex-col h-screen bg-cream dark:bg-[#0a0a0a] transition-colors duration-500 relative overflow-hidden font-sans selection:bg-terracotta selection:text-white">
         {renderError()}
         
-        <SideMenu 
-            isOpen={isMenuOpen} 
-            onClose={() => setIsMenuOpen(false)} 
-            onNavigate={(state) => setAppState(state)}
-            onSelectHistory={handleHistorySelect}
-            profile={getGamificationProfile()}
-        />
-
         {/* Background Texture - Dot Grid */}
         <div className="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none" 
              style={{ 
@@ -574,6 +566,13 @@ export const App = () => {
 
   return (
     <div className="max-w-md mx-auto h-screen shadow-2xl overflow-hidden font-sans relative bg-cream dark:bg-stone-900">
+      <SideMenu 
+          isOpen={isMenuOpen} 
+          onClose={() => setIsMenuOpen(false)} 
+          onNavigate={(state) => setAppState(state)}
+          onSelectHistory={handleHistorySelect}
+          profile={getGamificationProfile()}
+      />
       {showBarcodeScanner && (
         <BarcodeScanner 
             onScan={handleBarcodeScan} 
@@ -594,7 +593,8 @@ export const App = () => {
             result={result} 
             thumbnail={currentImageThumbnail}
             onReset={() => setAppState(AppState.LANDING)}
-            isHistoryView={false} 
+            isHistoryView={false}
+            onOpenMenu={() => setIsMenuOpen(true)}
         />
       )}
     </div>
