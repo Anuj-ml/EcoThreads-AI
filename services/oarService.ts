@@ -40,7 +40,7 @@ export const queryOARFacilities = async (brandName: string): Promise<any> => {
     const apiKey = process.env.OAR_API_KEY;
     // URL pattern based on legacy OAR, now Open Supply Hub
     // Using a broad search endpoint for contributors/brand association
-    const url = `https://openapparel.org/api/v1/facilities/?contributors=${encodeURIComponent(brandName)}`;
+    const url = `https://opensupplyhub.org/api/facilities/?contributors=${encodeURIComponent(brandName)}`;
 
     try {
         const fetchFacilities = async () => {
