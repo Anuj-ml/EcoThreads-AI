@@ -420,7 +420,7 @@ export const App = () => {
                     </h1>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-[200px] mx-auto leading-relaxed">
                         Scan your wardrobe. <br/> Uncover the impact.
-                    </p>S
+                    </p>
                 </div>
             </div>
 
@@ -428,7 +428,7 @@ export const App = () => {
             <div className="space-y-4">
                 <button 
                     onClick={handleStart}
-                    className="group relative w-full h-16 bg-ink dark:bg-white overflow-hidden rounded-2xl flex items-center justify-between px-2 shadow-xl hover:shadow-2xl hover:shadow-terracotta/20 transition-all duration-300"
+                    className="group relative w-full h-16 bg-ink dark:bg-white overflow-hidden rounded-2xl flex items-center justify-between px-2 shadow-xl hover:shadow-2xl transition-all duration-300"
                 >
                     <div className="absolute inset-0 bg-terracotta translate-y-full group-hover:translate-y-0 duration-300 ease-out"></div>
                     
