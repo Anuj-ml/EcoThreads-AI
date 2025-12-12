@@ -2,17 +2,15 @@
 import React, { useEffect, useState } from 'react';
 import { AnalysisResult, RecyclingResult, AlternativeProduct, RepairLocation } from '../types';
 import { findRecyclingCenters, searchSustainableAlternatives, findRepairServices } from '../services/geminiService';
-import { submitAnonymousScan, fetchBrandReputation } from '../services/socialProofService';
+import { submitAnonymousScan } from '../services/socialProofService';
 import { hasConsentedToSocialProof, setSocialProofConsent, addPoints } from '../services/storageService';
-import { MATERIALS_DB, BRANDS_DB } from '../data/knowledgeBase';
 import { CommunityImpactModal } from './CommunityImpactModal';
 import { 
-  Share2, RotateCcw, Droplets, Wind, ExternalLink, Leaf, Shirt, 
-  Thermometer, Waves, Scissors, HeartHandshake, Calculator, MapPin, 
-  Loader2, ArrowRight, Star, Navigation, Zap, Car, Coffee, Smartphone,
-  ShoppingBag, ThumbsUp, ThumbsDown, Sprout, Factory, Scale, Award, Check,
-  Globe, Megaphone, Plane, Mail, Recycle, Trash2, Milestone, ShieldCheck,
-  Hammer, Wrench, ChevronDown, ChevronUp, AlertOctagon, Fish, Users, CheckCircle2
+  RotateCcw, Wind, Calculator, MapPin, 
+  Loader2, Star, Zap, Car, Coffee, Smartphone,
+  ThumbsUp, ThumbsDown, Recycle, Trash2, Milestone, ShieldCheck,
+  Hammer, Wrench, ChevronDown, ChevronUp, Waves, Fish, Users, CheckCircle2,
+  Globe, Plane, Thermometer, Scissors, HeartHandshake, Check, Shirt
 } from 'lucide-react';
 
 interface ResultsDashboardProps {
@@ -25,6 +23,7 @@ interface ResultsDashboardProps {
 
 export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thumbnail, onReset, isHistoryView, onOpenMenu }) => {
   const [alternatives, setAlternatives] = useState<AlternativeProduct[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loadingAlternatives, setLoadingAlternatives] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'impact' | 'trace' | 'care' | 'value'>('impact');
@@ -108,6 +107,16 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
 
   }, [result, thumbnail, isHistoryView]);
 
+  // Recalculate CPW whenever price or lifespan changes
+  useEffect(() => {
+    if (price && !isNaN(parseFloat(price)) && lifespan > 0) {
+        const p = parseFloat(price);
+        setCpw(p / lifespan);
+    } else {
+        setCpw(null);
+    }
+  }, [price, lifespan]);
+
   const triggerPointsToast = (amount: number, label: string) => {
     if (amount > 0) {
         addPoints(amount);
@@ -125,12 +134,8 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
   const handleFeedback = (type: 'up' | 'down') => {
     setFeedback(type);
     if (type === 'up') triggerPointsToast(10, "Thanks for feedback!");
-  };
-
-  const calculateCPW = () => {
-    if (!price || isNaN(parseFloat(price))) return;
-    const p = parseFloat(price);
-    setCpw(p / lifespan);
+    // In a real app, send this signal to the backend to flag the prediction for RLHF
+    console.log(`User feedback: ${type} for result`, result);
   };
 
   const handleLocateRecycling = () => {
@@ -145,6 +150,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
             try {
                 const data = await findRecyclingCenters(position.coords.latitude, position.coords.longitude);
                 setRecyclingResult(data);
+                triggerPointsToast(20, "Explorer");
             } catch (err) { setRecyclingError("Failed to find centers."); } 
             finally { setLoadingRecycling(false); }
         },
@@ -324,13 +330,19 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                         <div><h3 className="font-bold text-ink dark:text-white text-lg">Carbon Footprint</h3><p className="text-xs text-gray-500">Emission Lifecycle Analysis</p></div>
                         <div className="ml-auto text-right"><p className="text-2xl font-black text-ink dark:text-white">{result.carbonFootprint.value}</p></div>
                     </div>
-                    {/* Breakdown Chart */}
+                    {/* Breakdown Chart & Legend */}
                     <div className="mb-6">
-                        <div className="h-4 w-full flex rounded-full overflow-hidden">
-                            <div style={{ width: `${carbonBreakdown.material}%` }} className="bg-orange-400"></div>
-                            <div style={{ width: `${carbonBreakdown.manufacturing}%` }} className="bg-yellow-400"></div>
-                            <div style={{ width: `${carbonBreakdown.transport}%` }} className="bg-blue-400"></div>
-                            <div style={{ width: `${carbonBreakdown.use}%` }} className="bg-green-400"></div>
+                        <div className="h-4 w-full flex rounded-full overflow-hidden mb-3">
+                            <div style={{ width: `${carbonBreakdown.material}%` }} className="bg-orange-400" title="Material"></div>
+                            <div style={{ width: `${carbonBreakdown.manufacturing}%` }} className="bg-yellow-400" title="Manufacturing"></div>
+                            <div style={{ width: `${carbonBreakdown.transport}%` }} className="bg-blue-400" title="Transport"></div>
+                            <div style={{ width: `${carbonBreakdown.use}%` }} className="bg-green-400" title="Use"></div>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold uppercase tracking-wide">
+                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-400"></div> Material</div>
+                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-400"></div> Make</div>
+                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-400"></div> Move</div>
+                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-400"></div> Care</div>
                         </div>
                     </div>
                     {/* Real World Impact */}
@@ -575,14 +587,90 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
             </div>
         )}
 
-        {/* Value Tab (Simplified for brevity as it was largely existing) */}
+        {/* Value Tab */}
         {activeTab === 'value' && (
              <div className="animate-slide-up space-y-8">
                 {/* Cost Calc */}
                 <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800">
                     <div className="flex items-center gap-3 mb-6"><div className="p-3 bg-terracotta/10 rounded-xl text-terracotta"><Calculator size={20} /></div><div><h3 className="font-bold text-ink dark:text-white">True Cost</h3><p className="text-xs text-gray-500">Price per wear</p></div></div>
-                    <div className="flex gap-3 mb-4"><input type="number" placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full pl-4 py-3 bg-gray-50 dark:bg-stone-800 rounded-xl font-bold" /><button onClick={calculateCPW} className="bg-ink dark:bg-white text-white dark:text-ink px-6 rounded-xl font-bold">Calc</button></div>
-                    {cpw !== null && <div className="text-center font-black text-3xl text-terracotta">${cpw.toFixed(2)}/wear</div>}
+                    
+                    <div className="space-y-4 mb-6">
+                        {/* Price Input */}
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase ml-1 mb-1 block">Item Price ($)</label>
+                            <input type="number" placeholder="0.00" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full pl-4 py-3 bg-gray-50 dark:bg-stone-800 rounded-xl font-bold text-ink dark:text-white focus:outline-none focus:ring-2 focus:ring-terracotta/20" />
+                        </div>
+                        {/* Wears Slider (Restored) */}
+                        <div>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="text-xs font-bold text-gray-400 uppercase ml-1">Estimated Wears</label>
+                                <span className="text-xs font-black text-ink dark:text-white">{lifespan}x</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="1" 
+                                max="200" 
+                                value={lifespan} 
+                                onChange={(e) => setLifespan(Number(e.target.value))}
+                                className="w-full h-2 bg-gray-200 dark:bg-stone-700 rounded-lg appearance-none cursor-pointer accent-terracotta"
+                            />
+                            <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                                <span>1 wear</span>
+                                <span>200+ wears</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {cpw !== null ? (
+                        <div className="text-center p-4 bg-terracotta/5 rounded-2xl">
+                            <div className="text-3xl font-black text-terracotta">${cpw.toFixed(2)}</div>
+                            <div className="text-xs font-bold text-terracotta/60 uppercase tracking-widest">Cost Per Wear</div>
+                        </div>
+                    ) : (
+                        <div className="text-center p-4 text-gray-400 text-sm font-medium">Enter price to see true cost</div>
+                    )}
+                </div>
+
+                {/* Circular Economy / Recycling (Restored Location Feature) */}
+                <div className="bg-sage/10 dark:bg-sage/5 p-6 rounded-3xl border border-sage/20">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-3 bg-sage/20 rounded-xl text-sage"><Recycle size={20} /></div>
+                        <div>
+                            <h3 className="font-bold text-ink dark:text-white">Circular Future</h3>
+                            <p className="text-xs text-sage dark:text-sage/80">Don't trash it. Pass it on.</p>
+                        </div>
+                    </div>
+
+                    {!recyclingResult && !loadingRecycling && (
+                        <button 
+                            onClick={handleLocateRecycling}
+                            className="w-full py-3 bg-sage text-white rounded-xl font-bold text-sm shadow-lg shadow-sage/30 hover:bg-sage/90 transition-all flex items-center justify-center gap-2"
+                        >
+                            <MapPin size={16} /> Find Recycling & Donation
+                        </button>
+                    )}
+
+                    {loadingRecycling && (
+                        <div className="flex justify-center py-4"><Loader2 className="animate-spin text-sage" /></div>
+                    )}
+
+                    {recyclingError && (
+                         <div className="text-center py-2 text-xs text-red-500 font-bold bg-red-50 dark:bg-red-900/10 rounded-lg">{recyclingError}</div>
+                    )}
+
+                    {recyclingResult && (
+                        <div className="space-y-3 mt-4 animate-fade-in">
+                            {recyclingResult.locations.slice(0, 3).map((loc, i) => (
+                                <a key={i} href={loc.uri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.name)}`} target="_blank" rel="noreferrer" className="block bg-white dark:bg-stone-900 p-3 rounded-xl border border-sage/20 hover:border-sage/50 transition-colors">
+                                    <div className="font-bold text-sm text-ink dark:text-white">{loc.name}</div>
+                                    <div className="text-xs text-gray-500">{loc.address}</div>
+                                </a>
+                            ))}
+                            <div className="text-center pt-2">
+                                <a href={`https://www.google.com/maps/search/textile+recycling+near+me`} target="_blank" rel="noreferrer" className="text-xs font-bold text-sage underline">View more on Maps</a>
+                            </div>
+                        </div>
+                    )}
                 </div>
              </div>
         )}

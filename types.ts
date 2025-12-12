@@ -128,6 +128,7 @@ export interface RecyclingLocation {
   name: string;
   address: string;
   info: string;
+  uri?: string;
 }
 
 export interface RepairLocation {
