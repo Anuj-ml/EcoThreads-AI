@@ -60,11 +60,14 @@ export const analyzeSustainability = async (
     OCR: "${localAI.ocrText}"
 
     TASK:
-    Analyze the clothing item image. Generate a sustainability report.
+    Analyze the clothing item image. Generate a sustainability report with deep traceability.
     
     1. **Identify Material**: Combine OCR & Visuals. EXTRACT "mainMaterial".
     2. **Impact**: Estimate Carbon (Weight * Factor + 1.5kg).
     3. **Score (0-100)**: 0-30 Bad, 31-60 Mod, 61-85 Good, 86+ Excel.
+    4. **Supply Chain**: Estimate a PLAUSIBLE 3-step journey (Raw Fiber -> Processing -> Assembly) and Total Miles based on the likely country of origin for this brand/material.
+    5. **Activism**: Write a short, punchy Tweet to the brand asking for transparency or praising them, and an email subject/body.
+    6. **End of Life**: Predict what happens in a landfill vs recycling.
 
     OUTPUT: Strict JSON.
   `;
@@ -139,6 +142,39 @@ export const analyzeSustainability = async (
                       note: { type: Type.STRING }
                   }
               },
+              supplyChain: {
+                  type: Type.OBJECT,
+                  properties: {
+                      totalMiles: { type: Type.NUMBER },
+                      steps: {
+                          type: Type.ARRAY,
+                          items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                  stage: { type: Type.STRING },
+                                  location: { type: Type.STRING },
+                                  description: { type: Type.STRING }
+                              }
+                          }
+                      }
+                  }
+              },
+              activism: {
+                  type: Type.OBJECT,
+                  properties: {
+                      brandTwitter: { type: Type.STRING },
+                      tweetContent: { type: Type.STRING },
+                      emailSubject: { type: Type.STRING },
+                      emailBody: { type: Type.STRING }
+                  }
+              },
+              endOfLife: {
+                  type: Type.OBJECT,
+                  properties: {
+                      landfill: { type: Type.STRING },
+                      recycling: { type: Type.STRING }
+                  }
+              },
               alternatives: {
                   type: Type.ARRAY,
                   items: {
@@ -165,10 +201,8 @@ export const analyzeSustainability = async (
 
   } catch (error) {
     // 2. FAIL-SAFE: If API call fails (Quota, Network, 500), Fallback to Local.
-    // This ensures the user ALWAYS sees the results dashboard.
     console.error("Gemini Analysis Failed. Falling back to local engine:", error);
     const localResult = analyzeSustainabilityLocal(localAI);
-    // Append a note to summary so user knows it might be less accurate
     localResult.summary += " (Note: AI service unavailable, using local estimation)";
     return localResult;
   }
@@ -176,20 +210,18 @@ export const analyzeSustainability = async (
 
 /**
  * Offline Fallback Analysis
- * Uses local heuristic logic to estimate sustainability when Gemini is unreachable.
  */
 export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResult => {
   const combinedText = (localAI.classification.join(' ') + ' ' + localAI.ocrText).toLowerCase();
   
   // 1. Detect Material
   let foundMaterial = MATERIALS_DB.find(m => combinedText.includes(m.name.toLowerCase().split(' ')[0]));
-  if (!foundMaterial) foundMaterial = MATERIALS_DB[0]; // Default to conventional cotton if unknown
+  if (!foundMaterial) foundMaterial = MATERIALS_DB[0]; 
 
   // 2. Detect Brand
   const brandName = Object.keys(BRANDS_DB).find(b => combinedText.includes(b.toLowerCase()));
   const brandData = brandName ? BRANDS_DB[brandName] : { ethics: 50, transparency: 50 };
 
-  // 3. Calculate Score (Simple weighted average)
   const score = Math.round(
     (foundMaterial.score * 10 * 0.5) + 
     (brandData.ethics * 0.3) + 
@@ -209,27 +241,33 @@ export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResu
     carbonFootprint: {
       value: `${foundMaterial.carbonPerKg}kg CO2e`,
       comparison: "Estimated offline",
-      breakdown: {
-          material: 50,
-          manufacturing: 30,
-          transport: 10,
-          use: 10
-      }
+      breakdown: { material: 50, manufacturing: 30, transport: 10, use: 10 }
     },
-    waterUsage: {
-      saved: 0,
-      comparison: "Data unavailable"
-    },
+    waterUsage: { saved: 0, comparison: "Data unavailable" },
     certifications: ["Mode: Offline/Local"],
     summary: `Local Estimation: Likely ${foundMaterial.name} based on visual scan.`,
     estimatedLifespan: 30,
-    careGuide: {
-      wash: "Wash cold",
-      dry: "Air dry",
-      repair: "Check seams",
-      note: "Standard care applies."
+    careGuide: { wash: "Wash cold", dry: "Air dry", repair: "Check seams", note: "Standard care." },
+    alternatives: [],
+    // Simple Local Fallback for new fields
+    supplyChain: {
+        totalMiles: 8500,
+        steps: [
+            { stage: "Material", location: "Unknown Origin", description: "Likely sourced from global commodity markets." },
+            { stage: "Manufacturing", location: "Global South", description: "Standard assembly hub." },
+            { stage: "Retail", location: "Local", description: "Transported to your location." }
+        ]
     },
-    alternatives: []
+    activism: {
+        brandTwitter: "@FashionBrand",
+        tweetContent: `Hey @FashionBrand, I want more transparency on your supply chain. #EcoThreads`,
+        emailSubject: "Inquiry about sustainability",
+        emailBody: "To whom it may concern, I recently purchased an item and would like to know more about its origins."
+    },
+    endOfLife: {
+        landfill: "Persists for decades.",
+        recycling: "Potential for mechanical recycling."
+    }
   };
 };
 

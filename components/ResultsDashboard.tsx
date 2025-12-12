@@ -7,7 +7,8 @@ import {
   Share2, RotateCcw, Droplets, Wind, ExternalLink, Leaf, Shirt, 
   Thermometer, Waves, Scissors, HeartHandshake, Calculator, MapPin, 
   Loader2, ArrowRight, Star, Navigation, Zap, Car, Coffee, Smartphone,
-  ShoppingBag, ThumbsUp, ThumbsDown, Sprout, Factory, Scale, Award, Check
+  ShoppingBag, ThumbsUp, ThumbsDown, Sprout, Factory, Scale, Award, Check,
+  Globe, Megaphone, Plane, Mail, Recycle, Trash2, Milestone
 } from 'lucide-react';
 import { saveToHistory, addPoints } from '../services/storageService';
 
@@ -23,7 +24,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
   const [alternatives, setAlternatives] = useState<AlternativeProduct[]>([]);
   const [loadingAlternatives, setLoadingAlternatives] = useState(false);
   
-  const [activeTab, setActiveTab] = useState<'impact' | 'care' | 'value'>('impact');
+  const [activeTab, setActiveTab] = useState<'impact' | 'trace' | 'care' | 'value'>('impact');
   
   // CPW State
   const [price, setPrice] = useState<string>('');
@@ -44,6 +45,9 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
   // Knowledge Base Lookups
   const [materialInfo, setMaterialInfo] = useState<any>(null);
   const [brandInfo, setBrandInfo] = useState<any>(null);
+
+  // End of Life Toggle
+  const [viewingEndOfLife, setViewingEndOfLife] = useState<'landfill' | 'recycling'>('recycling');
 
   useEffect(() => {
     if (!isHistoryView) {
@@ -168,6 +172,21 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
             setLoadingRecycling(false);
         }
     );
+  };
+
+  const handleActivism = (type: 'tweet' | 'email') => {
+     if (!result.activism) return;
+     
+     if (type === 'tweet') {
+         const text = encodeURIComponent(result.activism.tweetContent);
+         window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+         triggerPointsToast(100, "Activism Bonus!");
+     } else {
+         const subject = encodeURIComponent(result.activism.emailSubject);
+         const body = encodeURIComponent(result.activism.emailBody);
+         window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+         triggerPointsToast(100, "Voice Heard!");
+     }
   };
 
   // Helper for Score Ring
@@ -301,7 +320,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
       {/* Floating Tab Bar */}
       <div className="px-6 -mt-8 z-20 relative animate-fade-in-up delay-300">
         <div className="bg-white dark:bg-stone-800 p-1.5 rounded-2xl shadow-xl shadow-stone-900/10 border border-stone-100 dark:border-stone-700 flex justify-between gap-1">
-            {['impact', 'care', 'value'].map((tab) => (
+            {['impact', 'trace', 'care', 'value'].map((tab) => (
                 <button 
                     key={tab}
                     onClick={() => setActiveTab(tab as any)}
@@ -374,93 +393,6 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                     </div>
                 </div>
 
-                {/* NEW: Material Details Section */}
-                {materialInfo && (
-                     <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 animate-fade-in-up delay-200 transition-all hover:shadow-md">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-xl text-green-600">
-                                <Sprout size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-ink dark:text-white text-lg">Material Details</h3>
-                                <p className="text-xs text-gray-500">Detailed Impact Stats</p>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-gray-50 dark:bg-stone-800 p-3 rounded-2xl text-center">
-                                <div className="text-xs text-gray-400 uppercase font-bold mb-1">Carbon</div>
-                                <div className="text-xl font-black text-ink dark:text-white">{materialInfo.carbonPerKg}<span className="text-xs font-normal text-gray-500"> kg/kg</span></div>
-                            </div>
-                            <div className="bg-gray-50 dark:bg-stone-800 p-3 rounded-2xl text-center">
-                                <div className="text-xs text-gray-400 uppercase font-bold mb-1">Water</div>
-                                <div className="text-xl font-black text-ink dark:text-white">{materialInfo.waterPerKg}<span className="text-xs font-normal text-gray-500"> L/kg</span></div>
-                            </div>
-                             <div className="col-span-2 bg-gray-50 dark:bg-stone-800 p-3 rounded-2xl flex items-center justify-between px-4">
-                                <div className="text-xs text-gray-400 uppercase font-bold">Biodegradability</div>
-                                <div className="text-sm font-bold text-ink dark:text-white">{materialInfo.biodegradability || "Unknown"}</div>
-                            </div>
-                        </div>
-                     </div>
-                )}
-
-                {/* NEW: Brand Ethics Section */}
-                <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 animate-fade-in-up delay-200 transition-all hover:shadow-md">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-xl text-purple-600">
-                            <Scale size={24} />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-ink dark:text-white text-lg">Brand Ethics</h3>
-                            <p className="text-xs text-gray-500">Transparency & Practices</p>
-                        </div>
-                    </div>
-                    
-                    {brandInfo ? (
-                        <div className="space-y-5">
-                            <div className="flex justify-between items-center mb-2">
-                                <h4 className="font-bold text-xl text-ink dark:text-white">{brandInfo.name}</h4>
-                                <span className="text-[10px] bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-md font-bold uppercase">{brandInfo.label}</span>
-                            </div>
-                            
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="flex justify-between text-xs font-bold text-gray-400 mb-1">
-                                        <span>Labor Standards</span>
-                                        <span className="text-ink dark:text-white">{brandInfo.laborScore || brandInfo.ethics}/100</span>
-                                    </div>
-                                    <div className="h-2 bg-gray-100 dark:bg-stone-800 rounded-full overflow-hidden">
-                                        <div style={{ width: `${brandInfo.laborScore || brandInfo.ethics}%` }} className="h-full bg-purple-500 rounded-full"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs font-bold text-gray-400 mb-1">
-                                        <span>Environmental Score</span>
-                                        <span className="text-ink dark:text-white">{brandInfo.envScore || brandInfo.transparency}/100</span>
-                                    </div>
-                                    <div className="h-2 bg-gray-100 dark:bg-stone-800 rounded-full overflow-hidden">
-                                        <div style={{ width: `${brandInfo.envScore || brandInfo.transparency}%` }} className="h-full bg-green-500 rounded-full"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs font-bold text-gray-400 mb-1">
-                                        <span>Transparency</span>
-                                        <span className="text-ink dark:text-white">{brandInfo.transparency}/100</span>
-                                    </div>
-                                    <div className="h-2 bg-gray-100 dark:bg-stone-800 rounded-full overflow-hidden">
-                                        <div style={{ width: `${brandInfo.transparency}%` }} className="h-full bg-blue-400 rounded-full"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="text-center py-6 bg-gray-50 dark:bg-stone-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-stone-700">
-                             <Award className="mx-auto text-gray-300 mb-2" size={32} />
-                             <p className="text-sm text-gray-400">Brand data not available.</p>
-                             <p className="text-xs text-gray-500">Scan tag for better detection.</p>
-                        </div>
-                    )}
-                </div>
-
                 {/* Score Breakdown */}
                 <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 animate-fade-in-up delay-200 transition-all hover:shadow-md">
                     <h3 className="font-bold text-lg text-ink dark:text-white mb-6">Impact Analysis</h3>
@@ -480,67 +412,124 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                     </div>
                 </div>
 
-                {/* Sustainable Alternatives */}
-                <div className="space-y-4 animate-fade-in-up delay-300">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-lg text-ink dark:text-white flex items-center gap-2">
-                             Greener Choices
-                             <span className="text-xs font-normal text-gray-400">(Live Search)</span>
-                        </h3>
-                        <span className="text-xs font-bold text-terracotta bg-terracotta/10 px-2 py-1 rounded-md">
-                            Earn +20 pts
-                        </span>
+                {/* End of Life Projection (NEW) */}
+                {result.endOfLife && (
+                    <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 animate-fade-in-up delay-300">
+                         <div className="flex items-center gap-3 mb-6">
+                            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl text-indigo-500">
+                                <Milestone size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-ink dark:text-white text-lg">Future Projection</h3>
+                                <p className="text-xs text-gray-500">Choose the destination</p>
+                            </div>
+                        </div>
+
+                        <div className="flex bg-gray-100 dark:bg-stone-800 p-1 rounded-xl mb-4">
+                            <button 
+                                onClick={() => setViewingEndOfLife('landfill')}
+                                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${viewingEndOfLife === 'landfill' ? 'bg-white dark:bg-stone-700 text-terracotta shadow-sm' : 'text-gray-400'}`}
+                            >
+                                <Trash2 size={12} className="inline mr-1" /> Landfill
+                            </button>
+                            <button 
+                                onClick={() => setViewingEndOfLife('recycling')}
+                                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${viewingEndOfLife === 'recycling' ? 'bg-white dark:bg-stone-700 text-sage shadow-sm' : 'text-gray-400'}`}
+                            >
+                                <Recycle size={12} className="inline mr-1" /> Recycle
+                            </button>
+                        </div>
+
+                        <div className="p-4 bg-gray-50 dark:bg-stone-800/50 rounded-2xl border border-gray-100 dark:border-stone-700/50 min-h-[100px] flex items-center justify-center text-center">
+                            <p className={`text-sm font-medium ${viewingEndOfLife === 'landfill' ? 'text-terracotta' : 'text-sage'}`}>
+                                {viewingEndOfLife === 'landfill' ? result.endOfLife.landfill : result.endOfLife.recycling}
+                            </p>
+                        </div>
                     </div>
-                    
-                    {loadingAlternatives ? (
-                        <div className="flex gap-4 overflow-x-auto pb-6 px-2">
-                             {[1,2,3].map(i => (
-                                 <div key={i} className="min-w-[260px] h-64 bg-gray-100 dark:bg-stone-800 rounded-2xl animate-pulse"></div>
-                             ))}
+                )}
+            </div>
+        )}
+
+        {/* NEW: Trace Tab */}
+        {activeTab === 'trace' && result.supplyChain && (
+            <div className="animate-slide-up space-y-8">
+                
+                {/* Supply Chain Hero */}
+                <div className="bg-ink dark:bg-white text-white dark:text-ink rounded-3xl p-8 relative overflow-hidden shadow-xl">
+                    <div className="absolute top-0 right-0 opacity-10">
+                        <Globe size={180} className="-mr-10 -mt-10" />
+                    </div>
+                    <div className="relative z-10">
+                        <p className="text-xs font-bold uppercase tracking-widest opacity-70 mb-2">Estimated Journey</p>
+                        <h3 className="text-4xl font-black mb-1">
+                            {result.supplyChain.totalMiles.toLocaleString()}
+                        </h3>
+                        <p className="text-sm font-medium opacity-90">Miles traveled to reach you</p>
+                        
+                        <div className="mt-6 flex items-center gap-2 text-[10px] bg-white/20 dark:bg-black/10 w-fit px-3 py-1.5 rounded-full backdrop-blur-md">
+                            <Plane size={12} /> Global Impact Trace
                         </div>
-                    ) : alternatives.length > 0 ? (
-                        <div className="flex gap-4 overflow-x-auto pb-6 snap-x scrollbar-hide -mx-6 px-6">
-                            {alternatives.map((alt, idx) => (
-                                <div key={idx} className="min-w-[260px] snap-center bg-white dark:bg-stone-900 rounded-2xl overflow-hidden shadow-sm border border-stone-100 dark:border-stone-800 group hover:shadow-md transition-all">
-                                    <div className="h-40 relative overflow-hidden bg-gray-50 dark:bg-stone-800">
-                                        <img 
-                                            src={alt.image !== 'default' ? alt.image : `https://source.unsplash.com/random/400x300/?clothing,${encodeURIComponent(alt.name)}`} 
-                                            alt={alt.name} 
-                                            onError={(e) => {
-                                                // Fallback if image load fails
-                                                (e.target as HTMLImageElement).src = `https://placehold.co/400x300/EEE/31343C?text=${encodeURIComponent(alt.brand)}`;
-                                            }}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-                                        />
-                                        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-bold text-ink flex items-center gap-1">
-                                            <Leaf size={10} className="text-sage" /> {alt.sustainabilityFeature || "Eco"}
-                                        </div>
-                                    </div>
-                                    <div className="p-4">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <h4 className="font-bold text-ink dark:text-white text-sm line-clamp-1 flex-1">{alt.name}</h4>
-                                            <span className="text-xs font-bold text-terracotta ml-2">{alt.price}</span>
-                                        </div>
-                                        <p className="text-xs text-gray-500 mb-4">{alt.brand}</p>
-                                        <a 
-                                            href={alt.url} 
-                                            target="_blank" 
-                                            rel="noreferrer"
-                                            onClick={handleAlternativeClick}
-                                            className="flex items-center justify-center w-full py-3 bg-stone-100 dark:bg-stone-800 hover:bg-ink hover:text-white dark:hover:bg-white dark:hover:text-ink rounded-xl text-xs font-bold transition-all gap-2"
-                                        >
-                                            <ShoppingBag size={14} /> Shop Now
-                                        </a>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="p-8 text-center bg-gray-50 dark:bg-stone-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-stone-800">
-                            <p className="text-sm text-gray-400">No specific alternatives found.</p>
-                        </div>
-                    )}
+                    </div>
                 </div>
+
+                {/* Timeline Visualization */}
+                <div className="bg-white dark:bg-stone-900 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 relative">
+                    <div className="absolute left-8 top-12 bottom-12 w-0.5 bg-dashed bg-gray-200 dark:bg-stone-700"></div>
+                    
+                    <div className="space-y-12 relative">
+                        {result.supplyChain.steps.map((step, idx) => (
+                            <div key={idx} className="flex gap-6 relative">
+                                <div className="absolute left-0 w-3 h-3 rounded-full bg-white dark:bg-stone-900 border-2 border-terracotta mt-1.5 z-10"></div>
+                                <div className="pl-6">
+                                    <div className="text-[10px] font-bold text-terracotta uppercase tracking-wider mb-1">Step 0{idx + 1}</div>
+                                    <h4 className="font-bold text-lg text-ink dark:text-white mb-1">{step.location}</h4>
+                                    <div className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-stone-800 px-2 py-0.5 rounded w-fit mb-2">{step.stage}</div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{step.description}</p>
+                                </div>
+                            </div>
+                        ))}
+                         <div className="flex gap-6 relative">
+                                <div className="absolute left-0 w-3 h-3 rounded-full bg-sage mt-1.5 z-10 animate-pulse"></div>
+                                <div className="pl-6">
+                                    <div className="text-[10px] font-bold text-sage uppercase tracking-wider mb-1">Destination</div>
+                                    <h4 className="font-bold text-lg text-ink dark:text-white mb-1">Your Wardrobe</h4>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">The journey continues with you.</p>
+                                </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Activism Module */}
+                {result.activism && (
+                     <div className="bg-gradient-to-br from-terracotta to-orange-600 p-8 rounded-3xl shadow-lg text-white relative overflow-hidden group">
+                        <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
+                        
+                        <div className="relative z-10">
+                            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-4 backdrop-blur-sm">
+                                <Megaphone size={24} className="text-white" />
+                            </div>
+                            <h3 className="text-2xl font-black mb-2">Speak Up!</h3>
+                            <p className="text-sm opacity-90 mb-6 leading-relaxed max-w-xs">
+                                Real change happens when we demand it. Use your voice to ask {brandInfo?.name || "brands"} for better transparency.
+                            </p>
+
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => handleActivism('tweet')}
+                                    className="flex-1 bg-white text-terracotta font-bold py-3 rounded-xl shadow-lg hover:bg-gray-50 active:scale-95 transition-all text-xs flex items-center justify-center gap-2"
+                                >
+                                    Tweet Brand
+                                </button>
+                                <button 
+                                    onClick={() => handleActivism('email')}
+                                    className="flex-1 bg-black/20 text-white font-bold py-3 rounded-xl hover:bg-black/30 active:scale-95 transition-all text-xs flex items-center justify-center gap-2 backdrop-blur-md"
+                                >
+                                    <Mail size={14} /> Email
+                                </button>
+                            </div>
+                        </div>
+                     </div>
+                )}
             </div>
         )}
 
@@ -743,30 +732,6 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                                      <p className="text-sm text-gray-400 text-center py-4">No specific details found, check the map links below.</p>
                                 )}
                             </div>
-
-                            {/* Fallback/Additional Source Links (if any distinct ones exist) */}
-                            {recyclingResult.places.length > 0 && recyclingResult.locations.length === 0 && (
-                                <div className="grid gap-3">
-                                    <h4 className="text-xs font-bold text-gray-400 uppercase ml-1">Search Results</h4>
-                                    {recyclingResult.places.map((place, idx) => (
-                                        <a 
-                                            key={idx} 
-                                            href={place.uri} 
-                                            target="_blank" 
-                                            rel="noreferrer"
-                                            className="bg-white dark:bg-stone-900 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex items-center justify-between group hover:border-sage/50 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-4 overflow-hidden">
-                                                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-stone-800 flex items-center justify-center flex-shrink-0">
-                                                    <MapPin size={14} />
-                                                </div>
-                                                <span className="font-bold text-ink dark:text-white truncate text-xs">{place.title}</span>
-                                            </div>
-                                            <ExternalLink size={12} className="text-gray-400" />
-                                        </a>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                     )}
                 </div>

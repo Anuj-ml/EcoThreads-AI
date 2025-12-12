@@ -39,6 +39,27 @@ export interface AnalysisResult {
     repair: string;
     note: string;
   };
+  // NEW: Supply Chain Traceability
+  supplyChain: {
+    totalMiles: number;
+    steps: Array<{
+        stage: string; // e.g. "Raw Fiber", "Spinning", "Assembly"
+        location: string; // e.g. "Gujarat, India"
+        description: string;
+    }>;
+  };
+  // NEW: Direct Activism
+  activism: {
+    brandTwitter?: string;
+    tweetContent: string;
+    emailSubject: string;
+    emailBody: string;
+  };
+  // NEW: End of Life Projection
+  endOfLife: {
+    landfill: string; // e.g., "200+ years to decompose, releasing methane."
+    recycling: string; // e.g., "Can be mechanically shredded into insulation."
+  };
 }
 
 export interface AlternativeProduct {
