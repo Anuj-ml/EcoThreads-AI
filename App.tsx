@@ -420,7 +420,7 @@ export const App = () => {
                     </h1>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-[200px] mx-auto leading-relaxed">
                         Scan your wardrobe. <br/> Uncover the impact.
-                    </p>
+                    </p>S
                 </div>
             </div>
 
@@ -432,7 +432,7 @@ export const App = () => {
                 >
                     <div className="absolute inset-0 bg-terracotta translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
                     
-                    <span className="relative pl-6 font-bold text-lg text-white dark:text-ink group-hover:text-white transition-colors">
+                    <span className="relative pl-6 font-bold text-lg text-white dark:text-ink">
                         Start Analysis
                     </span>
                     
