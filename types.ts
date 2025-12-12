@@ -39,14 +39,41 @@ export interface AnalysisResult {
     repair: string;
     note: string;
   };
-  // NEW: Supply Chain Traceability
+  // UPDATED: Supply Chain Traceability with OAR
   supplyChain: {
+    source: 'verified' | 'estimated'; // New field
+    oarAttribution?: string; // New field
     totalMiles: number;
     steps: Array<{
         stage: string; // e.g. "Raw Fiber", "Spinning", "Assembly"
+        facilityName?: string; // New field for verified facilities
         location: string; // e.g. "Gujarat, India"
+        coordinates?: { lat: number; lng: number }; // New field
+        certifications?: string[]; // New field
         description: string;
     }>;
+  };
+  // NEW: Microplastic Pollution
+  microplasticImpact?: {
+    fibersPerWash: number;
+    annualFibers: number;
+    oceanEquivalent: string;
+    riskLevel: 'none' | 'low' | 'medium' | 'high' | 'severe';
+    mitigation: {
+        recommendation: string;
+        reductionPotential: string;
+        productLink?: string;
+    };
+  };
+  // NEW: Repair Information
+  repairInfo?: {
+    commonIssues: string[];
+    repairGuide: {
+        diy: string;
+        tools: string[];
+        difficulty: 'Easy' | 'Medium' | 'Professional';
+    };
+    localServices?: RepairLocation[];
   };
   // NEW: Direct Activism
   activism: {
@@ -97,12 +124,40 @@ export interface RecyclingLocation {
   info: string;
 }
 
+export interface RepairLocation {
+  name: string;
+  address: string;
+  distance: string;
+  rating?: number;
+  specialties?: string[];
+  phone?: string;
+  mapsUrl: string;
+}
+
 export interface RecyclingResult {
   locations: RecyclingLocation[];
   places: Array<{
     title: string;
     uri: string;
   }>;
+}
+
+export interface AnonymousScanData {
+    timestamp: number;
+    brand: string;
+    scoreRounded: number;
+    material: string;
+    regionHash: string; // Simplified region identifier
+}
+
+export interface SocialStats {
+    globalScans: number;
+    weeklyScans: number;
+    totalWaterSaved: number;
+    totalCarbonAvoided: number;
+    topSustainableBrand: { name: string; avgScore: number; scans: number };
+    worstBrand: { name: string; avgScore: number; scans: number };
+    trendingBrands: Array<{ name: string; trend: 'up' | 'down'; scans: number }>;
 }
 
 export enum AppState {

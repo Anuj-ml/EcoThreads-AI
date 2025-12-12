@@ -3,6 +3,7 @@ import { AnalysisResult, HistoryItem, GamificationProfile } from "../types";
 
 const HISTORY_KEY = 'ecothreads_scan_history';
 const GAMIFICATION_KEY = 'ecothreads_user_profile';
+const SOCIAL_PROOF_CONSENT_KEY = 'ecothreads_social_consent';
 
 // --- History ---
 
@@ -81,7 +82,24 @@ export const addPoints = (amount: number): { profile: GamificationProfile, level
     profile.badges.push('Carbon Neutralizer');
     newBadge = 'Carbon Neutralizer';
   }
+  // NEW Badge for repair
+  if (amount === 200 && !profile.badges.includes('Repair Hero')) {
+    profile.badges.push('Repair Hero');
+    newBadge = 'Repair Hero';
+  }
 
   localStorage.setItem(GAMIFICATION_KEY, JSON.stringify(profile));
   return { profile, leveledUp, newBadge };
+};
+
+// --- Social Proof ---
+
+export const hasConsentedToSocialProof = (): boolean | null => {
+    const stored = localStorage.getItem(SOCIAL_PROOF_CONSENT_KEY);
+    if (stored === null) return null; // Not decided yet
+    return stored === 'true';
+};
+
+export const setSocialProofConsent = (consent: boolean): void => {
+    localStorage.setItem(SOCIAL_PROOF_CONSENT_KEY, String(consent));
 };

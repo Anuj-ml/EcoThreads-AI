@@ -1,13 +1,77 @@
 
 export const MATERIALS_DB = [
-  { name: "Cotton (Conventional)", carbonPerKg: 21.0, waterPerKg: 10000, score: 5, biodegradability: "High (3-5 Months)" },
-  { name: "Cotton (Organic)", carbonPerKg: 3.8, waterPerKg: 2400, score: 9, biodegradability: "High (3-5 Months)" },
-  { name: "Polyester (Virgin)", carbonPerKg: 9.5, waterPerKg: 100, score: 3, biodegradability: "None (200+ Years)" },
-  { name: "Polyester (Recycled)", carbonPerKg: 3.5, waterPerKg: 50, score: 8, biodegradability: "Low (200+ Years)" },
-  { name: "Tencel/Lyocell", carbonPerKg: 3.0, waterPerKg: 150, score: 9, biodegradability: "High (6 Weeks)" },
-  { name: "Wool", carbonPerKg: 13.0, waterPerKg: 120, score: 6, biodegradability: "High (1-5 Years)" },
-  { name: "Denim", carbonPerKg: 33.4, waterPerKg: 3000, score: 5, biodegradability: "High (10-12 Months)" },
-  { name: "Nylon", carbonPerKg: 15.0, waterPerKg: 200, score: 4, biodegradability: "None (30-40 Years)" }
+  { 
+      name: "Cotton (Conventional)", 
+      carbonPerKg: 21.0, 
+      waterPerKg: 10000, 
+      score: 5, 
+      biodegradability: "High (3-5 Months)",
+      microplasticsPerWash: 0,
+      microplasticsPerYear: 0
+  },
+  { 
+      name: "Cotton (Organic)", 
+      carbonPerKg: 3.8, 
+      waterPerKg: 2400, 
+      score: 9, 
+      biodegradability: "High (3-5 Months)",
+      microplasticsPerWash: 0,
+      microplasticsPerYear: 0
+  },
+  { 
+      name: "Polyester (Virgin)", 
+      carbonPerKg: 9.5, 
+      waterPerKg: 100, 
+      score: 3, 
+      biodegradability: "None (200+ Years)",
+      microplasticsPerWash: 700000,
+      microplasticsPerYear: 36400000 
+  },
+  { 
+      name: "Polyester (Recycled)", 
+      carbonPerKg: 3.5, 
+      waterPerKg: 50, 
+      score: 8, 
+      biodegradability: "Low (200+ Years)",
+      microplasticsPerWash: 700000,
+      microplasticsPerYear: 36400000 
+  },
+  { 
+      name: "Tencel/Lyocell", 
+      carbonPerKg: 3.0, 
+      waterPerKg: 150, 
+      score: 9, 
+      biodegradability: "High (6 Weeks)",
+      microplasticsPerWash: 0,
+      microplasticsPerYear: 0 
+  },
+  { 
+      name: "Wool", 
+      carbonPerKg: 13.0, 
+      waterPerKg: 120, 
+      score: 6, 
+      biodegradability: "High (1-5 Years)",
+      microplasticsPerWash: 0,
+      microplasticsPerYear: 0 
+  },
+  { 
+      name: "Denim", 
+      carbonPerKg: 33.4, 
+      waterPerKg: 3000, 
+      score: 5, 
+      biodegradability: "High (10-12 Months)",
+      microplasticsPerWash: 0,
+      microplasticsPerYear: 0 
+  },
+  { 
+      name: "Nylon", 
+      carbonPerKg: 15.0, 
+      waterPerKg: 200, 
+      score: 4, 
+      biodegradability: "None (30-40 Years)",
+      microplasticsPerWash: 140000,
+      microplasticsPerYear: 7280000 
+  }
 ];
 
 export const BRANDS_DB: Record<string, { ethics: number; transparency: number; label: string; laborScore?: number; envScore?: number }> = {

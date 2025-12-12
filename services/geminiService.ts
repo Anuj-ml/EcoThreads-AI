@@ -1,7 +1,9 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, LocalAIResult, RecyclingResult, AlternativeProduct } from "../types";
+import { AnalysisResult, LocalAIResult, RecyclingResult, AlternativeProduct, RepairLocation } from "../types";
 import { MATERIALS_DB, BRANDS_DB } from "../data/knowledgeBase";
+import { queryOARFacilities } from "./oarService";
+import { findRepairServices } from "./repairService";
 
 // Initialize AI only if key exists to prevent immediate crash
 const apiKey = process.env.API_KEY;
@@ -33,18 +35,62 @@ async function retryWithBackoff<T>(
   }
 }
 
+// Microplastic Calculation Logic
+const calculateMicroplastics = (materialName: string): AnalysisResult['microplasticImpact'] => {
+    const mat = MATERIALS_DB.find(m => materialName.toLowerCase().includes(m.name.split(' ')[0].toLowerCase())) || MATERIALS_DB[0];
+    
+    const fibersPerWash = (mat as any).microplasticsPerWash || 0;
+    const annualFibers = (mat as any).microplasticsPerYear || 0;
+    
+    let riskLevel: 'none' | 'low' | 'medium' | 'high' | 'severe' = 'none';
+    if (annualFibers > 40000000) riskLevel = 'severe';
+    else if (annualFibers > 20000000) riskLevel = 'high';
+    else if (annualFibers > 5000000) riskLevel = 'medium';
+    else if (annualFibers > 0) riskLevel = 'low';
+
+    // Contextual Ocean Equivalent
+    let oceanEquivalent = "Minimal impact.";
+    if (annualFibers > 1000000) {
+        const bottles = Math.round(annualFibers / 700000); // Rough approx
+        oceanEquivalent = `Equivalent to dumping ${bottles} plastic bottles into the sea annually.`;
+    }
+
+    // Mitigation
+    let mitigation = {
+        recommendation: "Natural fibers shed no plastic.",
+        reductionPotential: "100%",
+        productLink: undefined
+    };
+
+    if (riskLevel !== 'none') {
+        mitigation = {
+            recommendation: "Use a washing bag (e.g., Guppyfriend) or install a microfiber filter.",
+            reductionPotential: "Up to 86%",
+            productLink: "https://guppyfriend.com/"
+        };
+    }
+
+    return {
+        fibersPerWash,
+        annualFibers,
+        oceanEquivalent,
+        riskLevel,
+        mitigation
+    };
+};
+
 export const analyzeSustainability = async (
   base64Image: string,
   localAI: LocalAIResult
 ): Promise<AnalysisResult> => {
   
-  // 1. FAIL-SAFE: Check for API Key. If missing, use Local Fallback immediately.
+  // 1. FAIL-SAFE: Check for API Key. If missing, use Local Fallback.
   if (!ai || !apiKey) {
     console.warn("API_KEY not found. Using local heuristic analysis.");
     return analyzeSustainabilityLocal(localAI);
   }
 
-  // Serialize knowledge base for the model context
+  // Serialize knowledge base
   const materialsContext = JSON.stringify(MATERIALS_DB);
   const brandsContext = JSON.stringify(BRANDS_DB);
 
@@ -60,20 +106,21 @@ export const analyzeSustainability = async (
     OCR: "${localAI.ocrText}"
 
     TASK:
-    Analyze the clothing item image. Generate a sustainability report with deep traceability.
+    Analyze the clothing item image. Generate a sustainability report with deep traceability and repairability.
     
     1. **Identify Material**: Combine OCR & Visuals. EXTRACT "mainMaterial".
-    2. **Impact**: Estimate Carbon (Weight * Factor + 1.5kg).
-    3. **Score (0-100)**: 0-30 Bad, 31-60 Mod, 61-85 Good, 86+ Excel.
-    4. **Supply Chain**: Estimate a PLAUSIBLE 3-step journey (Raw Fiber -> Processing -> Assembly) and Total Miles based on the likely country of origin for this brand/material.
-    5. **Activism**: Write a short, punchy Tweet to the brand asking for transparency or praising them, and an email subject/body.
-    6. **End of Life**: Predict what happens in a landfill vs recycling.
+    2. **Impact**: Estimate Carbon.
+    3. **Score**: 0-100 based on material/ethics.
+    4. **Supply Chain**: Estimate a PLAUSIBLE 3-step journey (Raw Fiber -> Processing -> Assembly).
+    5. **Activism**: Write a Tweet and Email to the brand.
+    6. **End of Life**: Landfill vs Recycling prediction.
+    7. **Repair**: List common issues for this item type and detailed DIY repair steps.
 
     OUTPUT: Strict JSON.
   `;
 
   try {
-    return await retryWithBackoff(async () => {
+    const result = await retryWithBackoff(async () => {
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: {
@@ -175,6 +222,20 @@ export const analyzeSustainability = async (
                       recycling: { type: Type.STRING }
                   }
               },
+              repairInfo: {
+                  type: Type.OBJECT,
+                  properties: {
+                      commonIssues: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      repairGuide: {
+                          type: Type.OBJECT,
+                          properties: {
+                              diy: { type: Type.STRING },
+                              tools: { type: Type.ARRAY, items: { type: Type.STRING } },
+                              difficulty: { type: Type.STRING, enum: ['Easy', 'Medium', 'Professional'] }
+                          }
+                      }
+                  }
+              },
               alternatives: {
                   type: Type.ARRAY,
                   items: {
@@ -195,12 +256,39 @@ export const analyzeSustainability = async (
 
       const text = response.text;
       if (!text) throw new Error("No response generated from AI model.");
-      
       return JSON.parse(text) as AnalysisResult;
     });
 
+    // --- Post-Processing Enhancements ---
+
+    // 1. Calculate Microplastics (Deterministic)
+    result.microplasticImpact = calculateMicroplastics(result.mainMaterial);
+
+    // 2. Open Apparel Registry (OAR) Check
+    // Extract Brand Name heuristic
+    const brandName = result.summary.split(' ').find(w => BRANDS_DB[w.toUpperCase()]) || 
+                      Object.keys(BRANDS_DB).find(b => result.summary.toUpperCase().includes(b)) ||
+                      "";
+    
+    if (brandName) {
+        const oarData = await queryOARFacilities(brandName);
+        if (oarData) {
+            // Merge verified steps with estimated miles (or calculate miles if coords exist)
+            result.supplyChain = {
+                ...result.supplyChain,
+                ...oarData,
+                totalMiles: result.supplyChain.totalMiles // Keep estimated miles if verification doesn't provide route
+            };
+        } else {
+            result.supplyChain.source = 'estimated';
+        }
+    } else {
+        result.supplyChain.source = 'estimated';
+    }
+
+    return result;
+
   } catch (error) {
-    // 2. FAIL-SAFE: If API call fails (Quota, Network, 500), Fallback to Local.
     console.error("Gemini Analysis Failed. Falling back to local engine:", error);
     const localResult = analyzeSustainabilityLocal(localAI);
     localResult.summary += " (Note: AI service unavailable, using local estimation)";
@@ -213,12 +301,9 @@ export const analyzeSustainability = async (
  */
 export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResult => {
   const combinedText = (localAI.classification.join(' ') + ' ' + localAI.ocrText).toLowerCase();
-  
-  // 1. Detect Material
   let foundMaterial = MATERIALS_DB.find(m => combinedText.includes(m.name.toLowerCase().split(' ')[0]));
   if (!foundMaterial) foundMaterial = MATERIALS_DB[0]; 
 
-  // 2. Detect Brand
   const brandName = Object.keys(BRANDS_DB).find(b => combinedText.includes(b.toLowerCase()));
   const brandData = brandName ? BRANDS_DB[brandName] : { ethics: 50, transparency: 50 };
 
@@ -249,8 +334,8 @@ export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResu
     estimatedLifespan: 30,
     careGuide: { wash: "Wash cold", dry: "Air dry", repair: "Check seams", note: "Standard care." },
     alternatives: [],
-    // Simple Local Fallback for new fields
     supplyChain: {
+        source: 'estimated',
         totalMiles: 8500,
         steps: [
             { stage: "Material", location: "Unknown Origin", description: "Likely sourced from global commodity markets." },
@@ -267,6 +352,15 @@ export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResu
     endOfLife: {
         landfill: "Persists for decades.",
         recycling: "Potential for mechanical recycling."
+    },
+    microplasticImpact: calculateMicroplastics(foundMaterial.name),
+    repairInfo: {
+        commonIssues: ["Loose threads", "Fading"],
+        repairGuide: {
+            diy: "Basic stitch repair.",
+            tools: ["Needle", "Thread"],
+            difficulty: "Easy"
+        }
     }
   };
 };
@@ -275,21 +369,10 @@ export const findRecyclingCenters = async (lat: number, lng: number): Promise<Re
   if (!ai) throw new Error("AI Service not configured");
   
   return retryWithBackoff(async () => {
-    try {
       const prompt = `
         Find 3 closest textile recycling centers or clothing donation drop-off points near these coordinates: ${lat}, ${lng}. 
-        
-        Requirements:
-        1. Use the Google Maps tool to find real locations.
-        2. Return the response strictly as a JSON array of objects.
-        3. Do NOT wrap the JSON in markdown code blocks.
-        
-        JSON Object Structure:
-        {
-          "name": "Name of the center",
-          "address": "Full Address",
-          "info": "Brief info about hours and what they accept (e.g. 'Open 9-5, Accepts clothes & shoes')"
-        }
+        Requirements: Use Google Maps tool. Return strictly JSON array.
+        JSON Object: { "name": "", "address": "", "info": "" }
       `;
 
       const response = await ai.models.generateContent({
@@ -297,14 +380,7 @@ export const findRecyclingCenters = async (lat: number, lng: number): Promise<Re
         contents: prompt,
         config: {
           tools: [{googleMaps: {}}],
-          toolConfig: {
-            retrievalConfig: {
-              latLng: {
-                latitude: lat,
-                longitude: lng
-              }
-            }
-          }
+          toolConfig: { retrievalConfig: { latLng: { latitude: lat, longitude: lng } } }
         },
       });
 
@@ -313,76 +389,46 @@ export const findRecyclingCenters = async (lat: number, lng: number): Promise<Re
       try {
           const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
           locations = JSON.parse(jsonStr);
-      } catch (e) {
-          console.warn("Failed to parse locations JSON", e);
-      }
+      } catch (e) { console.warn(e); }
       
       const places: Array<{title: string, uri: string}> = [];
       const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      
       if (chunks) {
         chunks.forEach((chunk: any) => {
-          if (chunk.web?.uri && chunk.web?.title) {
-              places.push({ title: chunk.web.title, uri: chunk.web.uri });
-          } else if (chunk.maps?.uri && chunk.maps?.title) {
-              places.push({ title: chunk.maps.title, uri: chunk.maps.uri });
-          }
+          if (chunk.web?.uri && chunk.web?.title) places.push({ title: chunk.web.title, uri: chunk.web.uri });
+          else if (chunk.maps?.uri && chunk.maps?.title) places.push({ title: chunk.maps.title, uri: chunk.maps.uri });
         });
       }
-
       return { locations, places };
-    } catch (error) {
-      console.error("Recycling Locator Error:", error);
-      throw error;
-    }
   });
 };
 
 export const searchSustainableAlternatives = async (query: string): Promise<AlternativeProduct[]> => {
     if (!ai) return [];
-
     return retryWithBackoff(async () => {
-        try {
             const prompt = `
             Task: Find 4 real, available sustainable fashion products matching "${query}". 
-            Use the Google Search tool to find actual product pages.
-            
-            Strict Requirements:
-            1. "name": The exact product name from the search result.
-            2. "brand": The brand name.
-            3. "price": Approximate price if visible (e.g. "$45"), otherwise estimate based on brand.
-            4. "sustainabilityFeature": Short reason why it's eco-friendly (max 5 words).
-            5. "url": You MUST provide the direct URL to the product page found in the search results.
-            
-            Output format:
-            Return ONLY a raw JSON array of objects. Do not wrap in markdown code blocks.
+            Use Google Search tool. Return ONLY raw JSON array.
+            Format: { "name": "", "brand": "", "price": "", "sustainabilityFeature": "", "url": "" }
             `;
 
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
                 contents: prompt,
-                config: {
-                    tools: [{googleSearch: {}}]
-                }
+                config: { tools: [{googleSearch: {}}] }
             });
 
             let products: AlternativeProduct[] = [];
             const text = response.text || "";
-            
             try {
                 const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
                 products = JSON.parse(jsonStr);
-            } catch (e) {
-                console.warn("Model did not return valid JSON. Falling back to Grounding Chunks.", e);
-            }
+            } catch (e) { console.warn(e); }
 
             const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-            const validLinks = groundingChunks
-                .map((c: any) => c.web)
-                .filter((web: any) => web && web.uri && web.title);
+            const validLinks = groundingChunks.map((c: any) => c.web).filter((web: any) => web && web.uri && web.title);
 
             if (products.length === 0 && validLinks.length > 0) {
-                console.log("Using Grounding Chunks for products");
                 return validLinks.slice(0, 4).map((link: any) => ({
                     name: link.title,
                     brand: "Verified Source",
@@ -392,23 +438,18 @@ export const searchSustainableAlternatives = async (query: string): Promise<Alte
                     image: `https://source.unsplash.com/featured/?fashion,sustainable,${encodeURIComponent(query.split(' ')[0])}`
                 }));
             }
-
             return products.map((p, index) => {
                 let finalUrl = p.url;
                 if ((!p.url || p.url.includes('example.com') || p.url === '#') && validLinks[index]) {
                     finalUrl = validLinks[index].uri;
                 }
-
                 return {
                     ...p,
                     url: finalUrl,
                     image: (p.image && p.image.startsWith('http')) ? p.image : `https://source.unsplash.com/featured/?clothing,${encodeURIComponent(p.name)}`
                 };
             });
-
-        } catch (error) {
-            console.error("Alternatives Search Error:", error);
-            throw error;
-        }
     });
 };
+
+export { findRepairServices };
