@@ -5,6 +5,34 @@ import { MATERIALS_DB, BRANDS_DB } from "../data/knowledgeBase";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+// Helper for retrying failed requests
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  delay = 1000
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    if (retries === 0) throw error;
+    
+    // Retry on 5xx errors or typical network/xhr errors
+    // Status 500, 503, or messages containing "xhr", "fetch", "network"
+    const errorMessage = (error.message || '').toLowerCase();
+    const isRetryable = error.status >= 500 || 
+                        errorMessage.includes('xhr') || 
+                        errorMessage.includes('fetch') || 
+                        errorMessage.includes('network') ||
+                        errorMessage.includes('failed to fetch');
+
+    if (!isRetryable) throw error;
+    
+    console.warn(`API Error (${error.status || 'Network'}). Retrying in ${delay}ms... attempts left: ${retries}`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return retryWithBackoff(fn, retries - 1, delay * 2);
+  }
+}
+
 export const analyzeSustainability = async (
   base64Image: string,
   localAI: LocalAIResult
@@ -15,153 +43,124 @@ export const analyzeSustainability = async (
   const brandsContext = JSON.stringify(BRANDS_DB);
 
   const prompt = `
-    You are the "Ensemble Fusion" layer of EcoThreads AI, utilizing advanced computer vision capabilities.
+    You are the "Ensemble Fusion" layer of EcoThreads AI.
     
-    CONTEXT DATA:
-    1. MATERIAL IMPACT DATABASE: ${materialsContext}
-    2. BRAND ETHICS DATABASE: ${brandsContext}
+    CONTEXT:
+    MATERIALS: ${materialsContext}
+    BRANDS: ${brandsContext}
     
-    INPUT SIGNALS:
-    1. Visual Classification (MobileNet): ${localAI.classification.join(', ')}
-    2. OCR Text (Tesseract): "${localAI.ocrText}"
+    INPUT:
+    Visual: ${localAI.classification.join(', ')}
+    OCR: "${localAI.ocrText}"
 
     TASK:
-    Analyze the clothing item provided in the image to generate a strict, data-backed sustainability report.
-
-    ADVANCED VISUAL ANALYSIS REQUIRED:
-    1. **Brand Logo Recognition (CNN Simulation)**: 
-       - Scan the image specifically for brand logos (e.g., Nike Swoosh, Patagonia skyline, Adidas stripes) or distinctive tags.
-       - Identify the brand even if OCR fails, based on visual identity.
-       - If a brand is found, use its specific data for the 'ethics' score.
-
-    2. **High-Fidelity Material Detection (EfficientNet Simulation)**:
-       - Analyze fabric texture at a granular level. Look for:
-         - **Weave Patterns**: Twill (Denim), Jersey (Tees), Piqué (Polos).
-         - **Sheen/Luster**: High sheen often indicates Silk or Synthetics (Polyester/Nylon). Matte often indicates Cotton/Wool.
-         - **Pilling/Texture**: Fuzziness suggests Wool or Acrylic.
-       - Use these visual cues to refine the 'mainMaterial' identification beyond just the OCR text.
-
-    ANALYSIS LOGIC:
-    1. **Material Identification**: 
-       - Combine OCR text with Visual Texture analysis.
-       - EXTRACT the "mainMaterial" string (e.g. "Recycled Polyester", "Organic Cotton Jersey").
+    Analyze the clothing item image. Generate a sustainability report.
     
-    2. **Impact Calculation**:
-       - Estimate Weight based on item type.
-       - Carbon Formula: (Weight * Material_CO2_Factor) + 1.5kg.
-       - Estimate Carbon Breakdown % (Material extraction vs Manufacturing vs Transport vs Use).
+    1. **Identify Material**: Combine OCR & Visuals. EXTRACT "mainMaterial".
+    2. **Impact**: Estimate Carbon (Weight * Factor + 1.5kg).
+    3. **Score (0-100)**: 0-30 Bad, 31-60 Mod, 61-85 Good, 86+ Excel.
 
-    3. **Scoring Algorithm (0-100)**:
-       - 0-30: High Impact (Virgin Synthetics, Air Freight).
-       - 31-60: Moderate (Conventional Cotton).
-       - 61-85: Good (Recycled materials, Natural fibers).
-       - 86-100: Excellent (Organic, Regenerative).
-
-    OUTPUT REQUIREMENTS:
-    - Return strict JSON.
-    - **Summary**: Concise, objective, 2 sentences max. Mention the Brand if detected.
-    - **Care Guide**: Short, actionable sentences.
-
-    RESPONSE FORMAT:
-    Follow the JSON schema strictly.
+    OUTPUT: Strict JSON.
   `;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: {
-        parts: [
-            {
-                inlineData: {
-                    mimeType: 'image/jpeg',
-                    data: base64Image.split(',')[1] // Remove header
-                }
-            },
-            { text: prompt }
-        ]
-      },
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            overallScore: { type: Type.NUMBER },
-            mainMaterial: { type: Type.STRING, description: "The primary fabric detected, e.g., '100% Organic Cotton'" },
-            breakdown: {
-              type: Type.OBJECT,
-              properties: {
-                material: { type: Type.NUMBER },
-                ethics: { type: Type.NUMBER },
-                production: { type: Type.NUMBER },
-                longevity: { type: Type.NUMBER },
-                transparency: { type: Type.NUMBER }
-              }
-            },
-            carbonFootprint: {
-              type: Type.OBJECT,
-              properties: {
-                value: { type: Type.STRING },
-                comparison: { type: Type.STRING },
-                breakdown: {
-                    type: Type.OBJECT,
-                    properties: {
-                        material: { type: Type.NUMBER, description: "Percentage attributed to raw material" },
-                        manufacturing: { type: Type.NUMBER, description: "Percentage attributed to production" },
-                        transport: { type: Type.NUMBER, description: "Percentage attributed to logistics" },
-                        use: { type: Type.NUMBER, description: "Percentage attributed to consumer care" }
-                    }
-                }
-              }
-            },
-            waterUsage: {
-              type: Type.OBJECT,
-              properties: {
-                saved: { type: Type.NUMBER },
-                comparison: { type: Type.STRING }
-              }
-            },
-            certifications: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            },
-            summary: { type: Type.STRING },
-            estimatedLifespan: { type: Type.INTEGER, description: "Estimated number of wears before end of life" },
-            careGuide: {
+  return retryWithBackoff(async () => {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: {
+          parts: [
+              {
+                  inlineData: {
+                      mimeType: 'image/jpeg',
+                      data: base64Image.split(',')[1] // Remove header
+                  }
+              },
+              { text: prompt }
+          ]
+        },
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              overallScore: { type: Type.NUMBER },
+              mainMaterial: { type: Type.STRING },
+              breakdown: {
                 type: Type.OBJECT,
                 properties: {
-                    wash: { type: Type.STRING, description: "Washing instructions (temp, cycle)" },
-                    dry: { type: Type.STRING, description: "Drying instructions" },
-                    repair: { type: Type.STRING, description: "Specific repair tip for this fabric" },
-                    note: { type: Type.STRING, description: "One eco-tip for longevity" }
+                  material: { type: Type.NUMBER },
+                  ethics: { type: Type.NUMBER },
+                  production: { type: Type.NUMBER },
+                  longevity: { type: Type.NUMBER },
+                  transparency: { type: Type.NUMBER }
                 }
-            },
-            alternatives: {
+              },
+              carbonFootprint: {
+                type: Type.OBJECT,
+                properties: {
+                  value: { type: Type.STRING },
+                  comparison: { type: Type.STRING },
+                  breakdown: {
+                      type: Type.OBJECT,
+                      properties: {
+                          material: { type: Type.NUMBER },
+                          manufacturing: { type: Type.NUMBER },
+                          transport: { type: Type.NUMBER },
+                          use: { type: Type.NUMBER }
+                      }
+                  }
+                }
+              },
+              waterUsage: {
+                type: Type.OBJECT,
+                properties: {
+                  saved: { type: Type.NUMBER },
+                  comparison: { type: Type.STRING }
+                }
+              },
+              certifications: {
                 type: Type.ARRAY,
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        name: { type: Type.STRING },
-                        brand: { type: Type.STRING },
-                        score: { type: Type.NUMBER },
-                        imagePlaceholder: { type: Type.STRING },
-                        url: { type: Type.STRING }
-                    }
-                }
+                items: { type: Type.STRING }
+              },
+              summary: { type: Type.STRING },
+              estimatedLifespan: { type: Type.INTEGER },
+              careGuide: {
+                  type: Type.OBJECT,
+                  properties: {
+                      wash: { type: Type.STRING },
+                      dry: { type: Type.STRING },
+                      repair: { type: Type.STRING },
+                      note: { type: Type.STRING }
+                  }
+              },
+              alternatives: {
+                  type: Type.ARRAY,
+                  items: {
+                      type: Type.OBJECT,
+                      properties: {
+                          name: { type: Type.STRING },
+                          brand: { type: Type.STRING },
+                          score: { type: Type.NUMBER },
+                          imagePlaceholder: { type: Type.STRING },
+                          url: { type: Type.STRING }
+                      }
+                  }
+              }
             }
           }
         }
-      }
-    });
+      });
 
-    const text = response.text;
-    if (!text) throw new Error("No response generated from AI model.");
-    
-    return JSON.parse(text) as AnalysisResult;
+      const text = response.text;
+      if (!text) throw new Error("No response generated from AI model.");
+      
+      return JSON.parse(text) as AnalysisResult;
 
-  } catch (error) {
-    console.error("Gemini Analysis Error:", error);
-    throw new Error("Sustainability analysis failed. Please ensure image is clear and try again.");
-  }
+    } catch (error) {
+      console.error("Analysis Attempt Failed:", error);
+      throw error;
+    }
+  });
 };
 
 /**
@@ -232,145 +231,139 @@ export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResu
 };
 
 export const findRecyclingCenters = async (lat: number, lng: number): Promise<RecyclingResult> => {
-  try {
-    const prompt = `
-      Find 3 closest textile recycling centers or clothing donation drop-off points near these coordinates: ${lat}, ${lng}. 
-      
-      Requirements:
-      1. Use the Google Maps tool to find real locations.
-      2. Return the response strictly as a JSON array of objects.
-      3. Do NOT wrap the JSON in markdown code blocks.
-      
-      JSON Object Structure:
-      {
-        "name": "Name of the center",
-        "address": "Full Address",
-        "info": "Brief info about hours and what they accept (e.g. 'Open 9-5, Accepts clothes & shoes')"
-      }
-    `;
+  return retryWithBackoff(async () => {
+    try {
+      const prompt = `
+        Find 3 closest textile recycling centers or clothing donation drop-off points near these coordinates: ${lat}, ${lng}. 
+        
+        Requirements:
+        1. Use the Google Maps tool to find real locations.
+        2. Return the response strictly as a JSON array of objects.
+        3. Do NOT wrap the JSON in markdown code blocks.
+        
+        JSON Object Structure:
+        {
+          "name": "Name of the center",
+          "address": "Full Address",
+          "info": "Brief info about hours and what they accept (e.g. 'Open 9-5, Accepts clothes & shoes')"
+        }
+      `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        tools: [{googleMaps: {}}],
-        toolConfig: {
-          retrievalConfig: {
-            latLng: {
-              latitude: lat,
-              longitude: lng
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          tools: [{googleMaps: {}}],
+          toolConfig: {
+            retrievalConfig: {
+              latLng: {
+                latitude: lat,
+                longitude: lng
+              }
             }
           }
-        }
-      },
-    });
-
-    const text = response.text || "[]";
-    let locations = [];
-    try {
-        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        locations = JSON.parse(jsonStr);
-    } catch (e) {
-        console.warn("Failed to parse locations JSON", e);
-    }
-    
-    // Extract grounding chunks for links
-    const places: Array<{title: string, uri: string}> = [];
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-    
-    if (chunks) {
-      chunks.forEach((chunk: any) => {
-        if (chunk.web?.uri && chunk.web?.title) {
-            places.push({ title: chunk.web.title, uri: chunk.web.uri });
-        } else if (chunk.maps?.uri && chunk.maps?.title) {
-            places.push({ title: chunk.maps.title, uri: chunk.maps.uri });
-        }
+        },
       });
-    }
 
-    return { locations, places };
-  } catch (error) {
-    console.error("Recycling Locator Error:", error);
-    throw new Error("Could not find recycling centers.");
-  }
+      const text = response.text || "[]";
+      let locations = [];
+      try {
+          const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+          locations = JSON.parse(jsonStr);
+      } catch (e) {
+          console.warn("Failed to parse locations JSON", e);
+      }
+      
+      const places: Array<{title: string, uri: string}> = [];
+      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+      
+      if (chunks) {
+        chunks.forEach((chunk: any) => {
+          if (chunk.web?.uri && chunk.web?.title) {
+              places.push({ title: chunk.web.title, uri: chunk.web.uri });
+          } else if (chunk.maps?.uri && chunk.maps?.title) {
+              places.push({ title: chunk.maps.title, uri: chunk.maps.uri });
+          }
+        });
+      }
+
+      return { locations, places };
+    } catch (error) {
+      console.error("Recycling Locator Error:", error);
+      throw error;
+    }
+  });
 };
 
 export const searchSustainableAlternatives = async (query: string): Promise<AlternativeProduct[]> => {
-    try {
-        const prompt = `
-        Task: Find 4 real, available sustainable fashion products matching "${query}". 
-        Use the Google Search tool to find actual product pages.
-        
-        Strict Requirements:
-        1. "name": The exact product name from the search result.
-        2. "brand": The brand name.
-        3. "price": Approximate price if visible (e.g. "$45"), otherwise estimate based on brand.
-        4. "sustainabilityFeature": Short reason why it's eco-friendly (max 5 words).
-        5. "url": You MUST provide the direct URL to the product page found in the search results.
-        
-        Output format:
-        Return ONLY a raw JSON array of objects. Do not wrap in markdown code blocks.
-        `;
-
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: {
-                tools: [{googleSearch: {}}]
-            }
-        });
-
-        // 1. Try to parse the model's JSON text response
-        let products: AlternativeProduct[] = [];
-        const text = response.text || "";
-        
+    return retryWithBackoff(async () => {
         try {
-            const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            products = JSON.parse(jsonStr);
-        } catch (e) {
-            console.warn("Model did not return valid JSON. Falling back to Grounding Chunks.", e);
-        }
+            const prompt = `
+            Task: Find 4 real, available sustainable fashion products matching "${query}". 
+            Use the Google Search tool to find actual product pages.
+            
+            Strict Requirements:
+            1. "name": The exact product name from the search result.
+            2. "brand": The brand name.
+            3. "price": Approximate price if visible (e.g. "$45"), otherwise estimate based on brand.
+            4. "sustainabilityFeature": Short reason why it's eco-friendly (max 5 words).
+            5. "url": You MUST provide the direct URL to the product page found in the search results.
+            
+            Output format:
+            Return ONLY a raw JSON array of objects. Do not wrap in markdown code blocks.
+            `;
 
-        // 2. Extract real URLs from Grounding Metadata
-        // This is crucial because the model might halluciante URLs in the text JSON.
-        // We will prioritize URLs from the Grounding Chunks if the JSON URLs look fake or generic.
-        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-        const validLinks = groundingChunks
-            .map((c: any) => c.web)
-            .filter((web: any) => web && web.uri && web.title);
+            const response = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: prompt,
+                config: {
+                    tools: [{googleSearch: {}}]
+                }
+            });
 
-        // If JSON parsing failed entirely, construct products from Grounding Chunks directly
-        if (products.length === 0 && validLinks.length > 0) {
-            console.log("Using Grounding Chunks for products");
-            return validLinks.slice(0, 4).map((link: any) => ({
-                name: link.title,
-                brand: "Verified Source",
-                price: "Check Site",
-                sustainabilityFeature: "Eco-Friendly Option",
-                url: link.uri,
-                image: `https://source.unsplash.com/featured/?fashion,sustainable,${encodeURIComponent(query.split(' ')[0])}`
-            }));
-        }
-
-        // 3. Validation and Image Assignment
-        return products.map((p, index) => {
-            // If the model provided a dummy URL, try to replace it with a real one from grounding
-            // Simple heuristic: if we have a valid link at this index, use it.
-            let finalUrl = p.url;
-            if ((!p.url || p.url.includes('example.com') || p.url === '#') && validLinks[index]) {
-                finalUrl = validLinks[index].uri;
+            let products: AlternativeProduct[] = [];
+            const text = response.text || "";
+            
+            try {
+                const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                products = JSON.parse(jsonStr);
+            } catch (e) {
+                console.warn("Model did not return valid JSON. Falling back to Grounding Chunks.", e);
             }
 
-            return {
-                ...p,
-                url: finalUrl,
-                // Fallback image since Google Search tool doesn't always provide image URLs in standard chunks
-                image: (p.image && p.image.startsWith('http')) ? p.image : `https://source.unsplash.com/featured/?clothing,${encodeURIComponent(p.name)}`
-            };
-        });
+            const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+            const validLinks = groundingChunks
+                .map((c: any) => c.web)
+                .filter((web: any) => web && web.uri && web.title);
 
-    } catch (error) {
-        console.error("Alternatives Search Error:", error);
-        return [];
-    }
+            if (products.length === 0 && validLinks.length > 0) {
+                console.log("Using Grounding Chunks for products");
+                return validLinks.slice(0, 4).map((link: any) => ({
+                    name: link.title,
+                    brand: "Verified Source",
+                    price: "Check Site",
+                    sustainabilityFeature: "Eco-Friendly Option",
+                    url: link.uri,
+                    image: `https://source.unsplash.com/featured/?fashion,sustainable,${encodeURIComponent(query.split(' ')[0])}`
+                }));
+            }
+
+            return products.map((p, index) => {
+                let finalUrl = p.url;
+                if ((!p.url || p.url.includes('example.com') || p.url === '#') && validLinks[index]) {
+                    finalUrl = validLinks[index].uri;
+                }
+
+                return {
+                    ...p,
+                    url: finalUrl,
+                    image: (p.image && p.image.startsWith('http')) ? p.image : `https://source.unsplash.com/featured/?clothing,${encodeURIComponent(p.name)}`
+                };
+            });
+
+        } catch (error) {
+            console.error("Alternatives Search Error:", error);
+            throw error;
+        }
+    });
 };

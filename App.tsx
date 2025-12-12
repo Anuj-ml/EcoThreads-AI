@@ -166,7 +166,8 @@ export const App = () => {
 
   const getProcessedImage = async (source: HTMLVideoElement | HTMLImageElement): Promise<{ blob: Blob, base64: string }> => {
     const canvas = document.createElement('canvas');
-    const maxDim = 1080;
+    // Reduced max dimension to prevent API payload errors
+    const maxDim = 800;
     let w = 'videoWidth' in source ? source.videoWidth : source.naturalWidth;
     let h = 'videoWidth' in source ? source.videoHeight : source.naturalHeight;
     
@@ -209,11 +210,12 @@ export const App = () => {
     }
 
     return new Promise((resolve, reject) => {
-       const base64 = canvas.toDataURL('image/jpeg', 0.9);
+       // Reduced quality to 0.8 to save bandwidth
+       const base64 = canvas.toDataURL('image/jpeg', 0.8);
        canvas.toBlob(blob => {
          if (blob) resolve({ blob, base64 });
          else reject(new Error("Canvas conversion failed"));
-       }, 'image/jpeg', 0.9);
+       }, 'image/jpeg', 0.8);
     });
   };
 
@@ -320,7 +322,7 @@ export const App = () => {
   };
 
   const renderLanding = () => (
-    <div className="flex flex-col h-screen bg-cream dark:bg-stone-950 transition-colors duration-500 relative overflow-hidden">
+    <div className="flex flex-col h-screen bg-cream dark:bg-[#0a0a0a] transition-colors duration-500 relative overflow-hidden font-sans selection:bg-terracotta selection:text-white">
         {renderError()}
         
         <SideMenu 
@@ -331,85 +333,132 @@ export const App = () => {
             profile={getGamificationProfile()}
         />
 
+        {/* Background Texture - Dot Grid */}
+        <div className="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none" 
+             style={{ 
+                 backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`, 
+                 backgroundSize: '24px 24px' 
+             }}>
+        </div>
+
+        {/* Ambient Gradients */}
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-terracotta/20 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-screen animate-pulse-slow pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-periwinkle/20 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-screen animate-pulse-slow pointer-events-none" style={{ animationDelay: '1.5s' }}></div>
+
         {/* Top Navigation Bar */}
         <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-30">
              <button 
                 onClick={() => setIsMenuOpen(true)}
-                className="p-3 bg-white/50 dark:bg-black/20 hover:bg-white dark:hover:bg-black/40 backdrop-blur-md rounded-full shadow-sm transition-all text-ink dark:text-white"
+                className="group p-3 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all duration-300 active:scale-95"
              >
-                <Menu size={24} />
+                <div className="flex flex-col gap-1.5 items-end">
+                    <span className="w-6 h-0.5 bg-ink dark:bg-white rounded-full group-hover:w-8 transition-all duration-300"></span>
+                    <span className="w-4 h-0.5 bg-ink dark:bg-white rounded-full group-hover:w-8 transition-all duration-300 delay-75"></span>
+                </div>
              </button>
              
-             <button 
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-3 bg-white/50 dark:bg-black/20 hover:bg-white dark:hover:bg-black/40 backdrop-blur-md rounded-full shadow-sm transition-all text-ink dark:text-white"
-            >
-                {darkMode ? <Sun size={24} /> : <Moon size={24} />}
-            </button>
-        </div>
-
-        {/* Dynamic Background */}
-        <div className="absolute inset-0 pointer-events-none">
-             <div className="absolute -top-[20%] -right-[20%] w-[80vh] h-[80vh] bg-terracotta/10 rounded-full blur-[120px] animate-pulse"></div>
-             <div className="absolute top-[40%] -left-[20%] w-[60vh] h-[60vh] bg-periwinkle/10 rounded-full blur-[100px]"></div>
-        </div>
-
-        {/* Main Content Centered */}
-        <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-8 text-center">
-            
-            {/* New Attractive Logo */}
-            <div className="mb-12 animate-fade-in-down">
-                <div className="w-32 h-32 mx-auto mb-6 relative hover:scale-105 transition-transform duration-700">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-ink to-stone-800 dark:from-white dark:to-stone-400 rounded-3xl opacity-10 rotate-6 transform"></div>
-                    <div className="w-full h-full bg-gradient-to-br from-ink to-stone-800 dark:from-white dark:to-stone-200 rounded-[2rem] flex items-center justify-center shadow-2xl relative z-10 overflow-hidden">
-                         <svg viewBox="0 0 200 200" className="w-20 h-20 text-cream dark:text-ink">
-                             {/* Abstract Thread Spool / Leaf Composition */}
-                             <path d="M100 170 C 60 170, 30 140, 30 90 C 30 40, 100 20, 100 20 C 100 20, 170 40, 170 90 C 170 140, 140 170, 100 170 Z" 
-                                   fill="currentColor" opacity="0.1" />
-                             <path d="M100 160 V 120" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
-                             {/* Interwoven Thread Line */}
-                             <path d="M100 120 C 100 120, 50 100, 50 70 C 50 40, 80 30, 100 30 C 120 30, 150 40, 150 70 C 150 100, 100 120, 100 120" 
-                                   fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-                             {/* Veins / Stitches */}
-                             <path d="M100 40 V 110" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="6 4" opacity="0.8"/>
-                             <path d="M100 60 L 130 50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.6"/>
-                             <path d="M100 80 L 70 70" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.6"/>
-                         </svg>
-                    </div>
-                </div>
-                <h1 className="text-5xl md:text-7xl font-light text-ink dark:text-white leading-tight tracking-tighter">
-                    EcoThreads
-                </h1>
-                <p className="text-sm font-bold tracking-[0.3em] uppercase text-terracotta mt-2">AI Sustainability Lens</p>
-            </div>
-
-            {/* Scan Trigger */}
-            <div className="relative group cursor-pointer animate-fade-in-up delay-100" onClick={handleStart}>
-                 <div className="absolute inset-0 bg-terracotta/30 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 scale-150"></div>
+             <div className="flex items-center gap-2">
                  <button 
-                    className="relative px-12 py-6 bg-ink dark:bg-white text-white dark:text-ink rounded-full font-bold text-lg shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 group-hover:shadow-terracotta/50"
-                 >
-                    <ScanLine size={24} />
-                    Start Analysis
-                    <div className="w-8 h-8 bg-white/20 dark:bg-black/10 rounded-full flex items-center justify-center ml-2">
-                        <ArrowRight size={16} />
+                    onClick={() => setDarkMode(!darkMode)}
+                    className="p-3 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all duration-300 text-ink dark:text-white active:rotate-12"
+                >
+                    {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
+             </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col relative z-10 px-8 pt-20 pb-12">
+            
+            {/* Hero Section */}
+            <div className="flex-1 flex flex-col justify-center">
+                
+                {/* Hero Graphic */}
+                <div className="relative w-full aspect-square max-w-[320px] mx-auto mb-12 group perspective-1000">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-terracotta to-orange-400 rounded-full opacity-20 blur-3xl group-hover:opacity-30 transition-opacity duration-700"></div>
+                    
+                    {/* Rotating Rings Container */}
+                    <div className="relative w-full h-full flex items-center justify-center animate-[spin_30s_linear_infinite]">
+                        {/* Outer Ring */}
+                        <div className="absolute inset-0 border border-dashed border-ink/10 dark:border-white/10 rounded-full animate-[spin_20s_linear_infinite_reverse]"></div>
+                        
+                        {/* Middle Ring with text path simulation */}
+                        <div className="absolute inset-4 border border-ink/5 dark:border-white/5 rounded-full"></div>
+
+                        {/* Core Logo - The Thread Node */}
+                        <div className="relative w-40 h-40 bg-white/50 dark:bg-stone-900/50 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/20 flex items-center justify-center transform group-hover:scale-105 transition-all duration-500">
+                             <svg viewBox="0 0 200 200" className="w-24 h-24 text-ink dark:text-white">
+                                {/* Vertical Thread / Needle Line */}
+                                <path d="M100 185 V 35" stroke="currentColor" strokeWidth="12" strokeLinecap="round" className="opacity-90" />
+                                
+                                {/* The AI Spark / Needle Eye */}
+                                <path d="M100 15 L 100 35" stroke="currentColor" strokeWidth="12" strokeLinecap="round" className="text-terracotta" />
+                                
+                                {/* Organic Loops representing Thread & Leaf */}
+                                <path d="M100 160 C 40 160, 20 100, 100 80" stroke="currentColor" strokeWidth="10" strokeLinecap="round" fill="none" opacity="0.8" />
+                                <path d="M100 130 C 160 130, 180 70, 100 50" stroke="currentColor" strokeWidth="10" strokeLinecap="round" fill="none" opacity="0.8" />
+                             </svg>
+                             
+                             {/* Floating badge */}
+                             <div className="absolute -top-4 -right-4 bg-terracotta text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg animate-bounce">
+                                AI Powered
+                             </div>
+                        </div>
                     </div>
-                 </button>
+                </div>
+
+                {/* Typography */}
+                <div className="text-center space-y-4 mb-8">
+                    <h1 className="text-6xl font-medium tracking-tighter text-ink dark:text-white leading-[0.9]">
+                        Eco<br/>
+                        <span className="font-light text-gray-400 dark:text-gray-500 italic">Threads</span>
+                    </h1>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-[200px] mx-auto leading-relaxed">
+                        Scan your wardrobe. <br/> Uncover the impact.
+                    </p>
+                </div>
             </div>
 
-            {isOffline && (
-                <div className="mt-8 animate-fade-in">
-                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-stone-100 dark:bg-stone-800/50 rounded-full text-xs font-bold text-gray-500 dark:text-gray-400 border border-stone-200 dark:border-stone-700">
-                        <Zap size={12} className="text-orange-400" /> Offline Mode Active
+            {/* Bottom Actions */}
+            <div className="space-y-4">
+                <button 
+                    onClick={handleStart}
+                    className="group relative w-full h-16 bg-ink dark:bg-white overflow-hidden rounded-2xl flex items-center justify-between px-2 shadow-xl hover:shadow-2xl hover:shadow-terracotta/20 transition-all duration-300"
+                >
+                    <div className="absolute inset-0 bg-terracotta translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                    
+                    <span className="relative pl-6 font-bold text-lg text-white dark:text-ink group-hover:text-white transition-colors">
+                        Start Analysis
                     </span>
+                    
+                    <div className="relative w-12 h-12 bg-white dark:bg-black rounded-xl flex items-center justify-center group-hover:bg-white/20 group-hover:text-white transition-colors">
+                        <ArrowRight size={20} className="text-ink dark:text-white group-hover:text-white" />
+                    </div>
+                </button>
+
+                <div className="flex justify-between items-center px-2">
+                     <div className="flex -space-x-2">
+                        {[1,2,3].map(i => (
+                            <div key={i} className="w-8 h-8 rounded-full border-2 border-cream dark:border-stone-900 bg-gray-200 dark:bg-stone-800 overflow-hidden">
+                                <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="" className="w-full h-full object-cover grayscale opacity-70" />
+                            </div>
+                        ))}
+                     </div>
+                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                         Join 2.4k+ Scanners
+                     </span>
                 </div>
-            )}
+            </div>
         </div>
         
-        {/* Footer */}
-        <div className="p-6 text-center z-10 opacity-40 hover:opacity-100 transition-opacity">
-            <p className="text-xs text-ink dark:text-white font-medium">Powered by Gemini Hybrid AI</p>
-        </div>
+        {/* Footer Status */}
+        {isOffline && (
+            <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none">
+                <span className="bg-orange-500/10 backdrop-blur-md border border-orange-500/20 text-orange-500 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">
+                    <Zap size={10} className="fill-current" /> Offline Mode
+                </span>
+            </div>
+        )}
     </div>
   );
 
