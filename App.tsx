@@ -405,7 +405,7 @@ export const App = () => {
                              </svg>
                              
                              {/* Floating badge - Colors inverted for dark mode, no bounce */}
-                             <div className="absolute -top-4 -right-4 bg-terracotta dark:bg-ink text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/10">
+                             <div className="absolute -top-4 -right-4 bg-terracotta text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/10">
                                 AI Powered
                              </div>
                         </div>
