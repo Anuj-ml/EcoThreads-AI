@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, ArrowRight, ScanLine, Barcode, History, AlertCircle, X, Moon, Sun, Loader2, Zap, Leaf, Menu } from 'lucide-react';
+import { Camera, Upload, ArrowRight, ScanLine, Barcode, History, AlertCircle, X, Moon, Sun, Loader2, Zap, Leaf, Menu, SwitchCamera } from 'lucide-react';
 import { AppState, AnalysisResult, LocalAIResult, HistoryItem } from './types';
 import { classifyImage, loadModel } from './services/tensorFlowService';
 import { extractTextFromImage } from './services/ocrService';
@@ -25,6 +25,7 @@ export const App = () => {
   const [isUploading, setIsUploading] = useState(false); // For File Upload
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'environment' | 'user'>('environment');
   
   // Scanning overlay state
   const [scanGuidance, setScanGuidance] = useState<{text: string, color: string}>({ text: "Searching...", color: "border-white/30" });
@@ -90,8 +91,11 @@ export const App = () => {
     setError(null);
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        // Stop existing stream first if switching cameras
+        stopStream();
+        
         const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment' } 
+            video: { facingMode: cameraFacingMode } 
         });
         streamRef.current = stream;
         if (videoRef.current) {
@@ -110,6 +114,10 @@ export const App = () => {
     }
   };
 
+  const toggleCamera = () => {
+      setCameraFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
+  };
+
   useEffect(() => {
     if (appState === AppState.SCANNING && !showBarcodeScanner) {
       startCamera();
@@ -117,7 +125,7 @@ export const App = () => {
       stopStream();
     }
     return () => stopStream();
-  }, [appState, showBarcodeScanner]);
+  }, [appState, showBarcodeScanner, cameraFacingMode]);
 
   const handleStart = () => {
     setError(null);
@@ -182,7 +190,14 @@ export const App = () => {
     if (!ctx) throw new Error("Failed to get canvas context");
 
     // 1. Draw original
+    // Mirror the image if using front camera
+    if (cameraFacingMode === 'user' && 'videoWidth' in source) {
+        ctx.translate(w, 0);
+        ctx.scale(-1, 1);
+    }
     ctx.drawImage(source, 0, 0, w, h);
+    // Reset transform
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     // 2. Analyze Brightness (Only apply enhancements if necessary)
     const imgData = ctx.getImageData(0, 0, w, h);
@@ -460,7 +475,7 @@ export const App = () => {
                 autoPlay 
                 playsInline 
                 muted
-                className="absolute inset-0 w-full h-full object-cover opacity-80"
+                className={`absolute inset-0 w-full h-full object-cover opacity-80 ${cameraFacingMode === 'user' ? 'scale-x-[-1]' : ''}`}
             />
             
             {/* Visual Guide Overlay */}
@@ -520,11 +535,11 @@ export const App = () => {
             />
             
             <button 
-                onClick={() => setShowBarcodeScanner(true)}
+                onClick={toggleCamera}
                 className="p-4 rounded-full bg-stone-800 text-white hover:bg-stone-700 transition-colors flex flex-col items-center gap-1 active:scale-95"
-                title="Scan Barcode or QR"
+                title="Switch Camera"
             >
-                <Barcode size={24} />
+                <SwitchCamera size={24} />
             </button>
 
             <button 
@@ -539,19 +554,29 @@ export const App = () => {
                     <div className="w-16 h-16 bg-white rounded-full group-active:scale-90 transition-transform"></div>
                 )}
             </button>
-
-             <button 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="p-4 rounded-full bg-stone-800 text-white hover:bg-stone-700 transition-colors flex flex-col items-center gap-1 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
-                title="Upload Image"
-            >
-                {isUploading ? (
-                     <Loader2 size={24} className="animate-spin text-terracotta" />
-                ) : (
-                     <Upload size={24} />
-                )}
-            </button>
+            
+            <div className="flex gap-2">
+                <button 
+                    onClick={() => setShowBarcodeScanner(true)}
+                    className="p-4 rounded-full bg-stone-800 text-white hover:bg-stone-700 transition-colors flex flex-col items-center gap-1 active:scale-95"
+                    title="Scan Barcode or QR"
+                >
+                    <Barcode size={24} />
+                </button>
+                
+                <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="p-4 rounded-full bg-stone-800 text-white hover:bg-stone-700 transition-colors flex flex-col items-center gap-1 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                    title="Upload Image"
+                >
+                    {isUploading ? (
+                         <Loader2 size={24} className="animate-spin text-terracotta" />
+                    ) : (
+                         <Upload size={24} />
+                    )}
+                </button>
+            </div>
         </div>
         
         {/* Back Button */}
