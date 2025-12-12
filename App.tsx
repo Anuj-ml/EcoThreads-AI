@@ -440,19 +440,6 @@ export const App = () => {
                         <ArrowRight size={20} className="text-ink dark:text-white group-hover:text-white" />
                     </div>
                 </button>
-
-                <div className="flex justify-between items-center px-2">
-                     <div className="flex -space-x-2">
-                        {[1,2,3].map(i => (
-                            <div key={i} className="w-8 h-8 rounded-full border-2 border-cream dark:border-stone-900 bg-gray-200 dark:bg-stone-800 overflow-hidden">
-                                <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="" className="w-full h-full object-cover grayscale opacity-70" />
-                            </div>
-                        ))}
-                     </div>
-                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                         Join 2.4k+ Scanners
-                     </span>
-                </div>
             </div>
         </div>
         
