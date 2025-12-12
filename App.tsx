@@ -372,26 +372,23 @@ export const App = () => {
                 <div className="relative w-full aspect-square max-w-[320px] mx-auto mb-12 group perspective-1000">
                     <div className="absolute inset-0 bg-gradient-to-tr from-terracotta to-orange-400 rounded-full opacity-20 blur-3xl group-hover:opacity-30 transition-opacity duration-700"></div>
                     
-                    {/* Rotating Rings Container */}
-                    <div className="relative w-full h-full flex items-center justify-center animate-[spin_30s_linear_infinite]">
+                    {/* Fixed Rings Container (Rotation Removed) */}
+                    <div className="relative w-full h-full flex items-center justify-center">
                         {/* Outer Ring */}
-                        <div className="absolute inset-0 border border-dashed border-ink/10 dark:border-white/10 rounded-full animate-[spin_20s_linear_infinite_reverse]"></div>
+                        <div className="absolute inset-0 border border-dashed border-ink/10 dark:border-white/10 rounded-full"></div>
                         
                         {/* Middle Ring with text path simulation */}
                         <div className="absolute inset-4 border border-ink/5 dark:border-white/5 rounded-full"></div>
 
-                        {/* Core Logo - The Thread Node */}
+                        {/* Core Logo - Restored Leaf Design */}
                         <div className="relative w-40 h-40 bg-white/50 dark:bg-stone-900/50 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/20 flex items-center justify-center transform group-hover:scale-105 transition-all duration-500">
                              <svg viewBox="0 0 200 200" className="w-24 h-24 text-ink dark:text-white">
-                                {/* Vertical Thread / Needle Line */}
-                                <path d="M100 185 V 35" stroke="currentColor" strokeWidth="12" strokeLinecap="round" className="opacity-90" />
-                                
-                                {/* The AI Spark / Needle Eye */}
-                                <path d="M100 15 L 100 35" stroke="currentColor" strokeWidth="12" strokeLinecap="round" className="text-terracotta" />
-                                
-                                {/* Organic Loops representing Thread & Leaf */}
-                                <path d="M100 160 C 40 160, 20 100, 100 80" stroke="currentColor" strokeWidth="10" strokeLinecap="round" fill="none" opacity="0.8" />
-                                <path d="M100 130 C 160 130, 180 70, 100 50" stroke="currentColor" strokeWidth="10" strokeLinecap="round" fill="none" opacity="0.8" />
+                                 <path d="M100 170 C 60 170, 30 140, 30 90 C 30 40, 100 20, 100 20 C 100 20, 170 40, 170 90 C 170 140, 140 170, 100 170 Z" 
+                                       fill="currentColor" opacity="0.1" />
+                                 <path d="M100 160 V 120" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
+                                 <path d="M100 120 C 100 120, 50 100, 50 70 C 50 40, 80 30, 100 30 C 120 30, 150 40, 150 70 C 150 100, 100 120, 100 120" 
+                                       fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+                                 <path d="M100 40 V 110" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="6 4" opacity="0.6"/>
                              </svg>
                              
                              {/* Floating badge */}

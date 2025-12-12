@@ -50,9 +50,9 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate,
                   <svg viewBox="0 0 200 200" className="w-full h-full text-ink dark:text-white">
                       <path d="M100 170 C 60 170, 30 140, 30 90 C 30 40, 100 20, 100 20 C 100 20, 170 40, 170 90 C 170 140, 140 170, 100 170 Z" 
                             fill="currentColor" opacity="0.1" />
-                      <path d="M100 160 V 120" stroke="currentColor" strokeWidth="12" strokeLinecap="round" />
+                      <path d="M100 160 V 120" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
                       <path d="M100 120 C 100 120, 50 100, 50 70 C 50 40, 80 30, 100 30 C 120 30, 150 40, 150 70 C 150 100, 100 120, 100 120" 
-                            fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
+                            fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                </div>
                <span className="font-bold text-lg text-ink dark:text-white tracking-tight">EcoThreads</span>
