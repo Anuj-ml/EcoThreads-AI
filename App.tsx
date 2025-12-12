@@ -430,7 +430,7 @@ export const App = () => {
                     onClick={handleStart}
                     className="group relative w-full h-16 bg-ink dark:bg-white overflow-hidden rounded-2xl flex items-center justify-between px-2 shadow-xl hover:shadow-2xl hover:shadow-terracotta/20 transition-all duration-300"
                 >
-                    <div className="absolute inset-0 bg-terracotta translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                    <div className="absolute inset-0 bg-terracotta translate-y-full group-hover:translate-y-0 duration-300 ease-out"></div>
                     
                     <span className="relative pl-6 font-bold text-lg text-white dark:text-ink">
                         Start Analysis
