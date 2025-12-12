@@ -3,7 +3,9 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, LocalAIResult, RecyclingResult, AlternativeProduct } from "../types";
 import { MATERIALS_DB, BRANDS_DB } from "../data/knowledgeBase";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize AI only if key exists to prevent immediate crash
+const apiKey = process.env.API_KEY;
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // Helper for retrying failed requests
 async function retryWithBackoff<T>(
@@ -16,8 +18,6 @@ async function retryWithBackoff<T>(
   } catch (error: any) {
     if (retries === 0) throw error;
     
-    // Retry on 5xx errors or typical network/xhr errors
-    // Status 500, 503, or messages containing "xhr", "fetch", "network"
     const errorMessage = (error.message || '').toLowerCase();
     const isRetryable = error.status >= 500 || 
                         errorMessage.includes('xhr') || 
@@ -38,6 +38,12 @@ export const analyzeSustainability = async (
   localAI: LocalAIResult
 ): Promise<AnalysisResult> => {
   
+  // 1. FAIL-SAFE: Check for API Key. If missing, use Local Fallback immediately.
+  if (!ai || !apiKey) {
+    console.warn("API_KEY not found. Using local heuristic analysis.");
+    return analyzeSustainabilityLocal(localAI);
+  }
+
   // Serialize knowledge base for the model context
   const materialsContext = JSON.stringify(MATERIALS_DB);
   const brandsContext = JSON.stringify(BRANDS_DB);
@@ -63,8 +69,8 @@ export const analyzeSustainability = async (
     OUTPUT: Strict JSON.
   `;
 
-  return retryWithBackoff(async () => {
-    try {
+  try {
+    return await retryWithBackoff(async () => {
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: {
@@ -155,12 +161,17 @@ export const analyzeSustainability = async (
       if (!text) throw new Error("No response generated from AI model.");
       
       return JSON.parse(text) as AnalysisResult;
+    });
 
-    } catch (error) {
-      console.error("Analysis Attempt Failed:", error);
-      throw error;
-    }
-  });
+  } catch (error) {
+    // 2. FAIL-SAFE: If API call fails (Quota, Network, 500), Fallback to Local.
+    // This ensures the user ALWAYS sees the results dashboard.
+    console.error("Gemini Analysis Failed. Falling back to local engine:", error);
+    const localResult = analyzeSustainabilityLocal(localAI);
+    // Append a note to summary so user knows it might be less accurate
+    localResult.summary += " (Note: AI service unavailable, using local estimation)";
+    return localResult;
+  }
 };
 
 /**
@@ -207,30 +218,24 @@ export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResu
     },
     waterUsage: {
       saved: 0,
-      comparison: "Data unavailable offline"
+      comparison: "Data unavailable"
     },
-    certifications: ["Offline Mode - Pending Verification"],
-    summary: `Offline Analysis: Detected potential ${foundMaterial.name}. Connect to internet for detailed report.`,
+    certifications: ["Mode: Offline/Local"],
+    summary: `Local Estimation: Likely ${foundMaterial.name} based on visual scan.`,
     estimatedLifespan: 30,
     careGuide: {
-      wash: "Wash cold (General recommendation)",
-      dry: "Air dry to save energy",
-      repair: "Check seams regularly",
-      note: "Offline mode: Standard care applies."
+      wash: "Wash cold",
+      dry: "Air dry",
+      repair: "Check seams",
+      note: "Standard care applies."
     },
-    alternatives: [
-      {
-        name: "Check online for alternatives",
-        brand: "System",
-        score: 0,
-        imagePlaceholder: "default",
-        url: "#"
-      }
-    ]
+    alternatives: []
   };
 };
 
 export const findRecyclingCenters = async (lat: number, lng: number): Promise<RecyclingResult> => {
+  if (!ai) throw new Error("AI Service not configured");
+  
   return retryWithBackoff(async () => {
     try {
       const prompt = `
@@ -296,6 +301,8 @@ export const findRecyclingCenters = async (lat: number, lng: number): Promise<Re
 };
 
 export const searchSustainableAlternatives = async (query: string): Promise<AlternativeProduct[]> => {
+    if (!ai) return [];
+
     return retryWithBackoff(async () => {
         try {
             const prompt = `

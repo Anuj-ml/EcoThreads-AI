@@ -451,7 +451,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
                 <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-800 animate-fade-in-up delay-200 transition-all hover:shadow-md">
                     <h3 className="font-bold text-lg text-ink dark:text-white mb-6">Impact Analysis</h3>
                     <div className="space-y-5">
-                        {Object.entries(result.breakdown).map(([key, value], i) => (
+                        {(Object.entries(result.breakdown) as [string, number][]).map(([key, value], i) => (
                             <div key={key} className="flex items-center gap-4 group">
                                 <div className="w-24 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">{key}</div>
                                 <div className="flex-1 h-3 bg-gray-100 dark:bg-stone-800 rounded-full overflow-hidden">
