@@ -91,9 +91,7 @@ export const App = () => {
     setError(null);
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        // Stop existing stream first if switching cameras
-        stopStream();
-        
+        stopStream(); // Ensure previous stream is closed
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { facingMode: cameraFacingMode } 
         });
@@ -115,7 +113,7 @@ export const App = () => {
   };
 
   const toggleCamera = () => {
-      setCameraFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
+    setCameraFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
   };
 
   useEffect(() => {
@@ -190,14 +188,14 @@ export const App = () => {
     if (!ctx) throw new Error("Failed to get canvas context");
 
     // 1. Draw original
-    // Mirror the image if using front camera
+    ctx.save();
     if (cameraFacingMode === 'user' && 'videoWidth' in source) {
+        // Mirror horizontally for front camera to fix OCR readability
         ctx.translate(w, 0);
         ctx.scale(-1, 1);
     }
     ctx.drawImage(source, 0, 0, w, h);
-    // Reset transform
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.restore();
 
     // 2. Analyze Brightness (Only apply enhancements if necessary)
     const imgData = ctx.getImageData(0, 0, w, h);
@@ -214,7 +212,7 @@ export const App = () => {
          console.log("Low light detected (" + Math.round(avgBrightness) + "), applying enhancement filters.");
          // Re-draw with filters
          ctx.filter = 'contrast(1.4) brightness(1.3) saturate(1.1)';
-         ctx.drawImage(source, 0, 0, w, h);
+         ctx.drawImage(canvas, 0, 0); // Draw canvas onto itself
          ctx.filter = 'none'; // Reset
          
          // Apply sharpening for better OCR
@@ -524,6 +522,24 @@ export const App = () => {
             </div>
         </div>
 
+        {/* Top Controls */}
+        <div className="absolute top-0 left-0 right-0 p-6 z-40 flex justify-between items-start pointer-events-none">
+            <button 
+                onClick={() => setAppState(AppState.LANDING)}
+                className="pointer-events-auto text-white p-3 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md transition-colors"
+            >
+                <ArrowRight className="rotate-180" size={24} />
+            </button>
+
+            <button 
+                onClick={toggleCamera}
+                className="pointer-events-auto text-white p-3 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md transition-colors"
+                title="Switch Camera"
+            >
+                <SwitchCamera size={24} />
+            </button>
+        </div>
+
         {/* Controls */}
         <div className="h-40 bg-black flex items-center justify-around px-8 rounded-t-3xl -mt-6 z-30 relative border-t border-white/10">
             <input 
@@ -535,11 +551,11 @@ export const App = () => {
             />
             
             <button 
-                onClick={toggleCamera}
+                onClick={() => setShowBarcodeScanner(true)}
                 className="p-4 rounded-full bg-stone-800 text-white hover:bg-stone-700 transition-colors flex flex-col items-center gap-1 active:scale-95"
-                title="Switch Camera"
+                title="Scan Barcode or QR"
             >
-                <SwitchCamera size={24} />
+                <Barcode size={24} />
             </button>
 
             <button 
@@ -554,38 +570,20 @@ export const App = () => {
                     <div className="w-16 h-16 bg-white rounded-full group-active:scale-90 transition-transform"></div>
                 )}
             </button>
-            
-            <div className="flex gap-2">
-                <button 
-                    onClick={() => setShowBarcodeScanner(true)}
-                    className="p-4 rounded-full bg-stone-800 text-white hover:bg-stone-700 transition-colors flex flex-col items-center gap-1 active:scale-95"
-                    title="Scan Barcode or QR"
-                >
-                    <Barcode size={24} />
-                </button>
-                
-                <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="p-4 rounded-full bg-stone-800 text-white hover:bg-stone-700 transition-colors flex flex-col items-center gap-1 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
-                    title="Upload Image"
-                >
-                    {isUploading ? (
-                         <Loader2 size={24} className="animate-spin text-terracotta" />
-                    ) : (
-                         <Upload size={24} />
-                    )}
-                </button>
-            </div>
+
+             <button 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="p-4 rounded-full bg-stone-800 text-white hover:bg-stone-700 transition-colors flex flex-col items-center gap-1 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                title="Upload Image"
+            >
+                {isUploading ? (
+                     <Loader2 size={24} className="animate-spin text-terracotta" />
+                ) : (
+                     <Upload size={24} />
+                )}
+            </button>
         </div>
-        
-        {/* Back Button */}
-        <button 
-            onClick={() => setAppState(AppState.LANDING)}
-            className="absolute top-6 left-6 z-40 text-white p-2 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md transition-colors"
-        >
-            <ArrowRight className="rotate-180" size={24} />
-        </button>
     </div>
   );
 
