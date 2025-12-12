@@ -46,17 +46,17 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate,
           {/* Header */}
           <div className="p-6 flex justify-between items-center border-b border-stone-200 dark:border-stone-800">
             <div className="flex items-center gap-3">
-               <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-                  <svg viewBox="0 0 200 200" className="w-full h-full text-ink dark:text-white">
-                      {/* Circle Outline */}
-                      <circle cx="100" cy="90" r="65" fill="none" stroke="currentColor" strokeWidth="16" />
+               <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden bg-[#1A1A1A] dark:bg-[#FDF8E4] shadow-sm">
+                  <svg viewBox="0 0 200 200" className="w-6 h-6 text-[#FDF8E4] dark:text-[#1A1A1A]">
+                      {/* Circle Head */}
+                      <circle cx="100" cy="85" r="60" fill="none" stroke="currentColor" strokeWidth="16" strokeLinecap="round" />
                       {/* Stem */}
-                      <line x1="100" y1="155" x2="100" y2="195" stroke="currentColor" strokeWidth="16" strokeLinecap="round" />
+                      <line x1="100" y1="145" x2="100" y2="190" stroke="currentColor" strokeWidth="16" strokeLinecap="round" />
                       {/* Dashed Center Line */}
-                      <line x1="100" y1="40" x2="100" y2="140" stroke="currentColor" strokeWidth="12" strokeDasharray="20 15" strokeLinecap="round" />
+                      <line x1="100" y1="35" x2="100" y2="135" stroke="currentColor" strokeWidth="14" strokeDasharray="16 12" strokeLinecap="round" />
                       {/* Branches */}
-                      <line x1="100" y1="70" x2="145" y2="55" stroke="currentColor" strokeWidth="12" strokeLinecap="round" />
-                      <line x1="100" y1="110" x2="55" y2="95" stroke="currentColor" strokeWidth="12" strokeLinecap="round" />
+                      <line x1="100" y1="65" x2="145" y2="50" stroke="currentColor" strokeWidth="14" strokeLinecap="round" />
+                      <line x1="100" y1="105" x2="55" y2="90" stroke="currentColor" strokeWidth="14" strokeLinecap="round" />
                   </svg>
                </div>
                <span className="font-bold text-lg text-ink dark:text-white tracking-tight">EcoThreads</span>

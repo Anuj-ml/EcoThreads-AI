@@ -372,30 +372,30 @@ export const App = () => {
                 <div className="relative w-full aspect-square max-w-[320px] mx-auto mb-12 group perspective-1000">
                     <div className="absolute inset-0 bg-gradient-to-tr from-terracotta to-orange-400 rounded-full opacity-20 blur-3xl group-hover:opacity-30 transition-opacity duration-700"></div>
                     
-                    {/* Fixed Rings Container (Rotation Removed) */}
+                    {/* Fixed Rings Container */}
                     <div className="relative w-full h-full flex items-center justify-center">
                         {/* Outer Ring */}
                         <div className="absolute inset-0 border border-dashed border-ink/10 dark:border-white/10 rounded-full"></div>
                         
-                        {/* Middle Ring with text path simulation */}
+                        {/* Middle Ring */}
                         <div className="absolute inset-4 border border-ink/5 dark:border-white/5 rounded-full"></div>
 
-                        {/* Core Logo - Exact Design from Image: Cream Tree on Ink Background */}
-                        <div className="relative w-40 h-40 bg-[#1A1A1A] rounded-[2.5rem] shadow-2xl border border-white/10 flex items-center justify-center transform group-hover:scale-105 transition-all duration-500">
-                             <svg viewBox="0 0 200 200" className="w-24 h-24 text-[#FDF8E4]">
-                                {/* Circle Outline */}
-                                <circle cx="100" cy="90" r="65" fill="none" stroke="currentColor" strokeWidth="10" />
-                                {/* Stem */}
-                                <line x1="100" y1="155" x2="100" y2="195" stroke="currentColor" strokeWidth="10" strokeLinecap="round" />
+                        {/* Core Logo - Inverted Colors in Dark Mode */}
+                        <div className="relative w-40 h-40 bg-[#1A1A1A] dark:bg-[#FDF8E4] rounded-[2.5rem] shadow-2xl border border-white/10 dark:border-black/5 flex items-center justify-center transform group-hover:scale-105 transition-all duration-500">
+                             <svg viewBox="0 0 200 200" className="w-24 h-24 text-[#FDF8E4] dark:text-[#1A1A1A]">
+                                {/* Circle Head */}
+                                <circle cx="100" cy="85" r="60" fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round" />
+                                {/* Stem - Connected to circle */}
+                                <line x1="100" y1="145" x2="100" y2="190" stroke="currentColor" strokeWidth="12" strokeLinecap="round" />
                                 {/* Dashed Center Line */}
-                                <line x1="100" y1="40" x2="100" y2="140" stroke="currentColor" strokeWidth="8" strokeDasharray="15 10" strokeLinecap="round" />
-                                {/* Branches */}
-                                <line x1="100" y1="70" x2="145" y2="55" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
-                                <line x1="100" y1="110" x2="55" y2="95" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
+                                <line x1="100" y1="35" x2="100" y2="135" stroke="currentColor" strokeWidth="10" strokeDasharray="16 12" strokeLinecap="round" />
+                                {/* Branches - Precise Angles */}
+                                <line x1="100" y1="65" x2="145" y2="50" stroke="currentColor" strokeWidth="10" strokeLinecap="round" />
+                                <line x1="100" y1="105" x2="55" y2="90" stroke="currentColor" strokeWidth="10" strokeLinecap="round" />
                              </svg>
                              
-                             {/* Floating badge (Bounce removed) */}
-                             <div className="absolute -top-4 -right-4 bg-terracotta text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg">
+                             {/* Floating badge - Colors inverted for dark mode, no bounce */}
+                             <div className="absolute -top-4 -right-4 bg-terracotta dark:bg-ink text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/10">
                                 AI Powered
                              </div>
                         </div>
