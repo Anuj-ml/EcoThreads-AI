@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, LocalAIResult, RecyclingResult, AlternativeProduct, RepairLocation, RecyclingLocation } from "../types";
+import { AnalysisResult, LocalAIResult, RecyclingResult, AlternativeProduct, RepairLocation } from "../types";
 import { MATERIALS_DB, BRANDS_DB } from "../data/knowledgeBase";
 import { queryOARFacilities } from "./oarService";
 import { findRepairServices } from "./repairService";
@@ -98,19 +98,6 @@ const calculateMicroplastics = (materialName: string): AnalysisResult['microplas
     };
 };
 
-const CLOTHING_KEYWORDS = [
-  'jersey', 'shirt', 'blouse', 'top', 'sweatshirt', 'cardigan', 'sweater',
-  'suit', 'cloak', 'coat', 'jacket', 'parka', 'robe', 'gown', 'dress',
-  'pajama', 'shoe', 'boot', 'sandal', 'slipper', 'loafer', 'sneaker',
-  'sock', 'stocking', 'jean', 'denim', 'pants', 'trousers', 'shorts',
-  'skirt', 'miniskirt', 'sarong', 'kilt', 'poncho', 'stole', 'scarf', 'shawl',
-  'tie', 'bow tie', 'bonnet', 'hat', 'cap', 'helmet', 'vest', 'waistcoat',
-  'apron', 'bikini', 'swimsuit', 'maillot', 'bra', 'brassiere', 'corset',
-  'glove', 'mitten', 'belt', 'purse', 'wallet', 'backpack', 'bag', 'umbrella',
-  'textile', 'fabric', 'cloth', 'velvet', 'wool', 'silk', 'cotton', 'linen',
-  'fashion', 'apparel', 'garment', 'wear', 'outfit'
-];
-
 export const analyzeSustainability = async (
   base64Image: string,
   localAI: LocalAIResult
@@ -140,24 +127,15 @@ export const analyzeSustainability = async (
     OCR: "${localAI.ocrText}"
 
     TASK:
-    1. **VALIDATION (CRITICAL)**: Analyze if the image represents a clothing item, footwear, or fashion accessory.
-       - If NO (e.g. it's a car, food, electronic, animal, furniture, person's face only, etc.):
-         Return strict JSON with:
-         overallScore: 0
-         mainMaterial: "Not a Clothing Item"
-         summary: "This item does not appear to be clothing. EcoThreads is designed for fashion items only."
-         ...and all other numeric fields as 0, strings as empty.
-
-       - If YES:
-         Proceed with full sustainability report.
-
-    2. **Identify Material**: Combine OCR & Visuals. EXTRACT "mainMaterial".
-    3. **Impact**: Estimate Carbon and generate "Real World Impact" equivalents (smartphones charged, miles driven, etc).
-    4. **Score**: 0-100 based on material/ethics.
-    5. **Supply Chain**: Estimate a PLAUSIBLE 3-step journey (Raw Fiber -> Processing -> Assembly).
-    6. **Activism**: Write a Tweet and Email to the brand.
-    7. **End of Life**: Landfill vs Recycling prediction.
-    8. **Repair**: List common issues for this item type and detailed DIY repair steps.
+    Analyze the clothing item image. Generate a sustainability report with deep traceability and repairability.
+    
+    1. **Identify Material**: Combine OCR & Visuals. EXTRACT "mainMaterial".
+    2. **Impact**: Estimate Carbon and generate "Real World Impact" equivalents (smartphones charged, miles driven, etc).
+    3. **Score**: 0-100 based on material/ethics.
+    4. **Supply Chain**: Estimate a PLAUSIBLE 3-step journey (Raw Fiber -> Processing -> Assembly).
+    5. **Activism**: Write a Tweet and Email to the brand.
+    6. **End of Life**: Landfill vs Recycling prediction.
+    7. **Repair**: List common issues for this item type and detailed DIY repair steps.
 
     OUTPUT: Strict JSON.
   `;
@@ -317,11 +295,6 @@ export const analyzeSustainability = async (
 
     // --- Post-Processing Enhancements ---
 
-    // 0. Check for Non-Clothing item
-    if (result.overallScore === 0) {
-        return result;
-    }
-
     // 1. Calculate Microplastics (Deterministic)
     result.microplasticImpact = calculateMicroplastics(result.mainMaterial);
 
@@ -352,9 +325,7 @@ export const analyzeSustainability = async (
   } catch (error) {
     console.error("Gemini Analysis Failed. Falling back to local engine:", error);
     const localResult = analyzeSustainabilityLocal(localAI);
-    if (localResult.overallScore !== 0) {
-        localResult.summary += " (Note: AI service unavailable, using local estimation)";
-    }
+    localResult.summary += " (Note: AI service unavailable, using local estimation)";
     return localResult;
   }
 };
@@ -367,12 +338,9 @@ export const findRecyclingCenters = async (lat: number, lng: number): Promise<Re
   if (!ai) throw new Error("API Key missing");
 
   return retryWithBackoff(async () => {
-      // We explicitly ask for JSON format in the prompt to ensure we get addresses
       const response = await ai.models.generateContent({
           model: "gemini-2.5-flash",
-          contents: `Find 3 textile recycling centers or clothing donation bins near ${lat}, ${lng}. 
-          Return a valid JSON array of objects with keys: "name", "address" (provide the full address), and "info". 
-          Do not use markdown formatting. Just the raw JSON string.`,
+          contents: `Find textile recycling centers or clothing donation bins near ${lat}, ${lng}.`,
           config: {
               tools: [{ googleMaps: {} }],
               toolConfig: {
@@ -383,33 +351,19 @@ export const findRecyclingCenters = async (lat: number, lng: number): Promise<Re
           }
       });
 
-      let locations: RecyclingLocation[] = [];
-      
-      // Try parsing the text response first
-      try {
-          const text = response.text || "[]";
-          const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-          locations = JSON.parse(jsonStr);
-      } catch (e) {
-          console.warn("Failed to parse recycling JSON from text, trying chunks", e);
-      }
-
-      // If text parsing failed, fallback to grounding chunks (often lacks address)
-      if (locations.length === 0) {
-          const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-          locations = chunks
-              .filter(c => c.maps?.title && c.maps?.uri)
-              .map(c => ({
-                  name: c.maps!.title!,
-                  address: "View on Map", // Fallback
-                  info: "Verified Location",
-                  uri: c.maps!.uri!
-              }));
-      }
+      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+      const locations = chunks
+          .filter(c => c.maps?.title && c.maps?.uri)
+          .map(c => ({
+              name: c.maps!.title!,
+              address: "Local Facility",
+              info: "Accepts textiles and clothing.",
+              uri: c.maps!.uri!
+          }));
 
       return {
-          locations: locations,
-          places: locations.map(l => ({ title: l.name, uri: l.uri || '' }))
+          locations: locations.map(l => ({ ...l, address: 'Nearby', info: 'Verified Location' })),
+          places: locations.map(l => ({ title: l.name, uri: l.uri }))
       };
   });
 };
@@ -456,28 +410,6 @@ export const searchSustainableAlternatives = async (query: string): Promise<Alte
  */
 export const analyzeSustainabilityLocal = (localAI: LocalAIResult): AnalysisResult => {
   const combinedText = (localAI.classification.join(' ') + ' ' + localAI.ocrText).toLowerCase();
-  
-  // Validation: Check if it's clothing
-  const isClothing = CLOTHING_KEYWORDS.some(k => combinedText.includes(k));
-
-  if (!isClothing) {
-      return {
-          overallScore: 0,
-          mainMaterial: "Not a Clothing Item",
-          breakdown: { material: 0, ethics: 0, production: 0, longevity: 0, transparency: 0 },
-          carbonFootprint: { value: "0", comparison: "", breakdown: { material: 0, manufacturing: 0, transport: 0, use: 0 } },
-          waterUsage: { saved: 0, comparison: "" },
-          certifications: [],
-          summary: "This does not appear to be a clothing item. Please scan a garment.",
-          estimatedLifespan: 0,
-          careGuide: { wash: "", dry: "", repair: "", note: "" },
-          supplyChain: { source: 'estimated', totalMiles: 0, steps: [] },
-          activism: { tweetContent: "", emailSubject: "", emailBody: "" },
-          endOfLife: { landfill: "", recycling: "" },
-          alternatives: []
-      };
-  }
-
   let foundMaterial = MATERIALS_DB.find(m => combinedText.includes(m.name.toLowerCase().split(' ')[0]));
   if (!foundMaterial) foundMaterial = MATERIALS_DB[0]; 
 

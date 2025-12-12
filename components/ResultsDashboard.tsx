@@ -10,7 +10,7 @@ import {
   Loader2, Star, Zap, Car, Coffee, Smartphone,
   ThumbsUp, ThumbsDown, Recycle, Trash2, Milestone, ShieldCheck,
   Hammer, Wrench, ChevronDown, ChevronUp, Waves, Fish, Users, CheckCircle2,
-  Globe, Plane, Thermometer, Scissors, HeartHandshake, Check, Shirt, AlertTriangle
+  Globe, Plane, Thermometer, Scissors, HeartHandshake, Check, Shirt
 } from 'lucide-react';
 
 interface ResultsDashboardProps {
@@ -61,9 +61,6 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
   const [viewingEndOfLife, setViewingEndOfLife] = useState<'landfill' | 'recycling'>('recycling');
 
   useEffect(() => {
-    // If it's an invalid item (score 0), do not trigger gamification or social proof
-    if (result.overallScore === 0) return;
-
     if (!isHistoryView) {
       // 1. Initial Points
       triggerPointsToast(50, "Scan Complete");
@@ -119,24 +116,6 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ result, thum
         setCpw(null);
     }
   }, [price, lifespan]);
-
-  // Render Invalid Item View if score is 0
-  if (result.overallScore === 0 && result.mainMaterial === "Not a Clothing Item") {
-      return (
-          <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-cream dark:bg-stone-900 animate-fade-in">
-              <div className="w-24 h-24 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-6">
-                  <AlertTriangle className="w-12 h-12 text-red-500" />
-              </div>
-              <h2 className="text-2xl font-black text-ink dark:text-white mb-4">Not a Clothing Item</h2>
-              <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-xs mx-auto leading-relaxed">
-                  {result.summary}
-              </p>
-              <button onClick={onReset} className="bg-ink dark:bg-white text-white dark:text-ink px-8 py-4 rounded-full font-bold text-sm shadow-xl flex items-center gap-2 hover:scale-105 transition-transform">
-                  <RotateCcw size={18} /> Scan Again
-              </button>
-          </div>
-      );
-  }
 
   const triggerPointsToast = (amount: number, label: string) => {
     if (amount > 0) {
