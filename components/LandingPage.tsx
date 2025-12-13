@@ -19,12 +19,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
         setProgress(prev => {
             if (prev >= 100) {
                 clearInterval(timer);
-                setTimeout(() => setLoading(false), 500);
+                setTimeout(() => setLoading(false), 800);
                 return 100;
             }
-            return prev + Math.floor(Math.random() * 10) + 1;
+            return prev + 1;
         });
-    }, 50);
+    }, 30);
     return () => clearInterval(timer);
   }, []);
 
@@ -39,22 +39,56 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
 
   if (loading) {
       return (
-          <div className="fixed inset-0 bg-[#FDF8E4] dark:bg-[#080808] z-[100] flex flex-col items-center justify-center transition-all duration-500">
-              <div className="flex flex-col items-center gap-8 animate-fade-in-up">
-                  <h1 className="text-5xl md:text-7xl font-serif italic tracking-tighter text-[#1A1A1A] dark:text-[#FDF8E4]">
-                      EcoThreads
-                  </h1>
-                  
-                  <div className="w-64 h-[1px] bg-black/10 dark:bg-white/10 relative overflow-hidden">
-                      <div 
-                        className="absolute inset-y-0 left-0 bg-[#D95D39] transition-all duration-100 ease-linear"
-                        style={{ width: `${progress}%` }}
-                      ></div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
-                      <span>System Loading</span>
-                      <span>{progress}%</span>
+          <div className="fixed inset-0 bg-[#FDF8E4] dark:bg-[#080808] z-[100] flex flex-col items-center justify-center transition-all duration-500 overflow-hidden">
+              <style>{`
+                 @keyframes draw {
+                   0% { stroke-dashoffset: 1000; }
+                   100% { stroke-dashoffset: 0; }
+                 }
+                 @keyframes float {
+                   0%, 100% { transform: translateY(0px) rotate(0deg); }
+                   50% { transform: translateY(-10px) rotate(1deg); }
+                 }
+                 .thread-anim {
+                   stroke-dasharray: 1000;
+                   stroke-dashoffset: 1000;
+                   animation: draw 3s ease-in-out forwards;
+                 }
+                 .floating-text {
+                   animation: float 4s ease-in-out infinite;
+                 }
+               `}</style>
+              
+              <div className="relative flex items-center justify-center w-full h-full">
+                  <div className="relative floating-text">
+                      <h1 className="text-6xl md:text-9xl font-serif italic tracking-tighter text-[#1A1A1A] dark:text-[#FDF8E4] relative z-10 opacity-0 animate-fade-in-up" style={{ animationFillMode: 'forwards' }}>
+                          EcoThreads
+                      </h1>
+                      
+                      {/* Thread Animation SVG */}
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[200%] pointer-events-none z-20">
+                           <svg className="w-full h-full" viewBox="0 0 600 200" preserveAspectRatio="none">
+                               {/* Main Thread */}
+                               <path 
+                                 d="M0,100 C150,200 150,0 300,100 C450,200 450,0 600,100" 
+                                 fill="none" 
+                                 stroke="#D95D39" 
+                                 strokeWidth="2" 
+                                 strokeLinecap="round"
+                                 className="thread-anim"
+                               />
+                               {/* Secondary Thread */}
+                               <path 
+                                 d="M600,100 C450,0 450,200 300,100 C150,0 150,200 0,100" 
+                                 fill="none" 
+                                 stroke="#002FA7" 
+                                 strokeWidth="1.5" 
+                                 strokeLinecap="round"
+                                 className="thread-anim"
+                                 style={{ animationDelay: '0.3s' }}
+                               />
+                           </svg>
+                      </div>
                   </div>
               </div>
           </div>
@@ -129,7 +163,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
               
               {/* Center Icon: Fades out on hover */}
               <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                   <div className="w-32 h-32 rounded-full border border-white flex items-center justify-center animate-spin-slow text-white">
+                   <div className="w-32 h-32 rounded-full border border-white flex items-center justify-center text-white">
                         <ScanLine size={32} />
                    </div>
               </div>
@@ -268,21 +302,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                   title: "Visual Recognition",
                   desc: "Neural networks identify fabric weaves and garment composition in real-time.",
                   tech: "TFJS / MobileNet",
-                  img: "https://images.unsplash.com/photo-1520697830682-8bc9fde6ca6a?auto=format&fit=crop&q=80&w=800"
+                  img: "https://tse4.mm.bing.net/th/id/OIP.fXex_Kwx6O0sFxqAy7M8DQHaEK?auto=format&fit=crop&q=80&w=800"
               },
               { 
                   id: "02",
                   title: "Supply Chain Trace",
                   desc: "Mapping the journey from raw fiber to retail using global registry data.",
                   tech: "Open Supply Hub",
-                  img: "https://images.unsplash.com/photo-1596524430615-b46475ddff6e?auto=format&fit=crop&q=80&w=800"
+                  img: "https://plus.unsplash.com/premium_photo-1681487963628-1a9298789518?auto=format&fit=crop&q=80&w=800"
               },
               { 
                   id: "03",
                   title: "Impact Calculation",
                   desc: "Quantifying water usage, carbon emissions, and microplastic shedding.",
                   tech: "ISO 14040 Lifecycle",
-                  img: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=800"
+                  img: "https://images.unsplash.com/photo-1683884361203-69b7f969e9ff?auto=format&fit=crop&q=80&w=800"
               }
           ].map((item, idx) => (
               <div key={idx} className="group relative border-b border-black/10 dark:border-white/10 h-[60vh] md:h-[40vh] overflow-hidden flex flex-col md:flex-row">
