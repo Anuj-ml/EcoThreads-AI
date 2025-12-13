@@ -168,6 +168,7 @@ export interface SocialStats {
 }
 
 export enum AppState {
+  INTRO = 'INTRO',
   LANDING = 'LANDING',
   SCANNING = 'SCANNING',
   ANALYZING = 'ANALYZING',

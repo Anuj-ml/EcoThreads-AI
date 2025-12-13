@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, ArrowRight, ScanLine, Barcode, History, AlertCircle, X, Moon, Sun, Loader2, Zap, Leaf, Menu, SwitchCamera } from 'lucide-react';
+import { Camera, Upload, ArrowRight, ScanLine, Barcode, History, AlertCircle, X, Moon, Sun, Loader2, Zap, Leaf, Menu, SwitchCamera, Globe, Sparkles, Footprints } from 'lucide-react';
 import { AppState, AnalysisResult, LocalAIResult, HistoryItem } from './types';
 import { classifyImage, loadModel } from './services/tensorFlowService';
 import { extractTextFromImage } from './services/ocrService';
@@ -14,7 +14,7 @@ import { SideMenu } from './components/SideMenu';
 import { PRODUCTS_DB } from './data/knowledgeBase';
 
 export const App = () => {
-  const [appState, setAppState] = useState<AppState>(AppState.LANDING);
+  const [appState, setAppState] = useState<AppState>(AppState.INTRO);
   const [analysisStage, setAnalysisStage] = useState<'vision' | 'ocr' | 'fusion' | 'complete'>('vision');
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [currentImageThumbnail, setCurrentImageThumbnail] = useState<string>("");
@@ -332,8 +332,69 @@ export const App = () => {
     );
   };
 
+  const renderIntro = () => (
+    <div className="flex flex-col h-full bg-cream dark:bg-stone-900 relative overflow-hidden animate-fade-in">
+        <div className="absolute inset-0 z-0 opacity-[0.05] dark:opacity-[0.05] pointer-events-none" 
+             style={{ 
+                 backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`, 
+                 backgroundSize: '24px 24px' 
+             }}>
+        </div>
+
+        {/* Top Bar for Dark Mode Toggle */}
+        <div className="absolute top-0 right-0 p-6 z-30">
+            <button 
+                onClick={() => setDarkMode(!darkMode)}
+                className="p-3 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all duration-300 text-ink dark:text-white active:rotate-12"
+            >
+                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center z-10">
+            <div className="w-32 h-32 bg-ink dark:bg-white rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl rotate-3 animate-float-slow">
+                 <Leaf size={64} className="text-cream dark:text-ink" />
+            </div>
+            
+            <h1 className="text-5xl font-black text-ink dark:text-white mb-4 tracking-tighter leading-tight">
+                Eco<br/>Threads
+            </h1>
+            
+            <p className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-10 leading-relaxed max-w-xs">
+                Your intelligent stylist for a sustainable future.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 mb-12 w-full max-w-xs">
+                <div className="bg-white dark:bg-stone-800 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex flex-col items-center gap-2">
+                    <ScanLine size={20} className="text-terracotta" />
+                    <span className="text-xs font-bold text-ink dark:text-white">AI Scan</span>
+                </div>
+                <div className="bg-white dark:bg-stone-800 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex flex-col items-center gap-2">
+                    <Footprints size={20} className="text-sage" />
+                    <span className="text-xs font-bold text-ink dark:text-white">Footprint</span>
+                </div>
+                <div className="bg-white dark:bg-stone-800 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex flex-col items-center gap-2">
+                    <Globe size={20} className="text-periwinkle" />
+                    <span className="text-xs font-bold text-ink dark:text-white">Impact</span>
+                </div>
+                <div className="bg-white dark:bg-stone-800 p-4 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-800 flex flex-col items-center gap-2">
+                    <Sparkles size={20} className="text-yellow-500" />
+                    <span className="text-xs font-bold text-ink dark:text-white">Rewards</span>
+                </div>
+            </div>
+
+            <button 
+                onClick={() => setAppState(AppState.LANDING)}
+                className="w-full bg-ink dark:bg-white text-white dark:text-ink py-5 rounded-2xl font-bold text-lg shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 group"
+            >
+                Get Started <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+        </div>
+    </div>
+  );
+
   const renderLanding = () => (
-    <div className="flex flex-col h-full bg-cream dark:bg-[#0a0a0a] transition-colors duration-500 relative overflow-hidden font-sans selection:bg-terracotta selection:text-white">
+    <div className="flex flex-col h-full bg-cream dark:bg-[#0a0a0a] transition-colors duration-500 relative overflow-hidden font-sans selection:bg-terracotta selection:text-white animate-fade-in">
         {renderError()}
         
         {/* Background Texture - Dot Grid */}
@@ -590,6 +651,7 @@ export const App = () => {
             onClose={() => setShowBarcodeScanner(false)} 
         />
       )}
+      {!showBarcodeScanner && appState === AppState.INTRO && renderIntro()}
       {!showBarcodeScanner && appState === AppState.LANDING && renderLanding()}
       {!showBarcodeScanner && appState === AppState.HISTORY && (
         <ScanHistory 
