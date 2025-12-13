@@ -190,8 +190,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
               
               {/* Hero Image: Grayscale by default, Full Color on hover */}
               <img 
-                src="https://images.unsplash.com/photo-1643286131725-5e0ad3b3ca02?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fHN1c3RhaW5hYmxlJTIwZmFzaGlvbnxlbnwwfHwwfHx8MA%3D%3D" 
-                className="w-full h-full object-cover grayscale group-hover:grayscale-0 contrast-125 group-hover:scale-105 transition-all duration-700 ease-in-out"
+                src="https://images.unsplash.com/photo-1643286131725-5e0ad3b3ca02?w=600&auto=format&fit=crop&q=60" 
+                className="w-full h-full object-cover group-hover:grayscale-0 contrast-125 group-hover:scale-105 transition-all duration-700 ease-in-out"
                 alt="Sustainable Fashion"
               />
               
@@ -206,7 +206,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
 
       {/* --- Marquee --- */}
       <div className="border-y border-black/10 dark:border-white/10 py-6 overflow-hidden">
-          <div className="whitespace-nowrap flex gap-24 animate-scan opacity-40 hover:opacity-100 transition-opacity">
+          <div className="whitespace-nowrap flex gap-24 opacity-40 hover:opacity-100 transition-opacity">
               {[...Array(6)].map((_, i) => (
                   <span key={i} className="text-xl md:text-2xl font-serif italic tracking-wide">
                       Radical Transparency <span className="font-sans not-italic text-xs font-bold align-top text-[#002FA7]">v2.0</span>
