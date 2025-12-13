@@ -11,7 +11,6 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, toggleTheme }) => {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
-  const [activeSection, setActiveSection] = useState(0);
 
   // Preloader Simulation
   useEffect(() => {
@@ -30,16 +29,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
 
   if (loading) {
       return (
-          <div className="fixed inset-0 bg-[#002FA7] z-[100] flex flex-col justify-between p-6 md:p-12 text-white">
-              <div className="flex justify-between items-start font-mono text-xs uppercase tracking-widest">
-                  <span>EcoThreads™ System</span>
-                  <span>Loading Assets</span>
-              </div>
-              <div className="text-[12vw] font-serif italic leading-none flex items-baseline">
-                  {progress}<span className="text-[4vw] font-sans not-italic">%</span>
-              </div>
-              <div className="w-full h-px bg-white/20 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 h-full bg-white transition-all duration-300" style={{ width: `${progress}%` }}></div>
+          <div className="fixed inset-0 bg-[#FDF8E4] dark:bg-[#080808] z-[100] flex items-center justify-center transition-all duration-500">
+              <div className="flex flex-col items-center gap-6">
+                  <div className="relative w-24 h-24">
+                      <div className="absolute inset-0 border-4 border-gray-200 dark:border-white/10 rounded-full"></div>
+                      <div 
+                        className="absolute inset-0 border-4 border-t-[#002FA7] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"
+                      ></div>
+                      <div className="absolute inset-0 flex items-center justify-center font-mono text-sm font-bold text-[#002FA7] dark:text-white">
+                          {progress}%
+                      </div>
+                  </div>
+                  <div className="font-mono text-xs uppercase tracking-[0.3em] animate-pulse text-black dark:text-white">
+                      Initializing
+                  </div>
               </div>
           </div>
       );
@@ -67,11 +70,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
               </button>
           </div>
 
-          {/* Bottom Left */}
+          {/* Bottom Left - Cleaned up */}
           <div className="flex justify-between items-end">
              <div className="flex flex-col gap-1">
-                 <span>37.7749° N, 122.4194° W</span>
-                 <span className="opacity-50">{new Date().toLocaleTimeString()}</span>
+                 {/* Removed Time/Location for cleaner look */}
              </div>
 
              {/* Bottom Right */}
@@ -107,10 +109,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
           {/* Right: Visual */}
           <div className="w-full md:w-1/2 h-1/2 md:h-full relative overflow-hidden group">
               <div className="absolute inset-0 bg-[#002FA7] mix-blend-color z-10 opacity-0 group-hover:opacity-50 transition-opacity duration-700"></div>
+              {/* Updated Hero Image */}
               <img 
-                src="https://images.unsplash.com/photo-1550614000-4b9519e003ac?q=80&w=1800&auto=format&fit=crop" 
+                src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=2000&auto=format&fit=crop" 
                 className="w-full h-full object-cover grayscale contrast-125 group-hover:scale-105 transition-transform duration-[2s]"
-                alt="Texture"
+                alt="High Fashion Model"
               />
               <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                    <div className="w-32 h-32 rounded-full border border-white flex items-center justify-center animate-spin-slow text-white">
@@ -206,7 +209,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
           ))}
       </section>
 
-      {/* --- Footer --- */}
+      {/* --- Footer (Retained) --- */}
       <footer className="bg-[#002FA7] text-white pt-24 pb-12 px-6 md:px-12">
           <div className="flex flex-col items-center justify-center text-center">
               <div className="mb-12">
