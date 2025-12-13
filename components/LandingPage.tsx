@@ -132,7 +132,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
       }`}>
           <div className="flex justify-between items-center max-w-[1920px] mx-auto">
             {/* Brand */}
-            <div className="flex items-center gap-4 cursor-pointer group" onClick={toggleTheme}>
+            <div className="flex items-center gap-4 cursor-pointer group">
                 <div className={`relative w-8 h-8 flex items-center justify-center border rounded-full transition-colors ${hasScrolled ? 'border-black/10 dark:border-white/30 group-hover:border-black dark:group-hover:border-white' : 'border-white/30 group-hover:border-white'}`}>
                     <div className={`w-1.5 h-1.5 rounded-full ${hasScrolled ? 'bg-black dark:bg-white' : 'bg-white'}`}></div>
                 </div>
@@ -143,7 +143,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
 
             {/* Menu / Actions */}
             <div className="flex items-center gap-6">
-                <button onClick={toggleTheme} className={`hidden md:block text-[10px] font-bold uppercase tracking-widest transition-colors ${hasScrolled ? 'text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white' : 'text-white/80 hover:text-white'}`}>
+                <button onClick={toggleTheme} className={`hidden md:block text-[10px] px-6 py-2 font-bold uppercase tracking-widest transition-colors ${hasScrolled ? 'text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white' : 'text-white/80 hover:text-white'}`}>
                     {darkMode ? 'Light' : 'Dark'}
                 </button>
                 <button 
@@ -197,7 +197,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
               
               {/* Center Icon: Fades out on hover */}
               <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                   <div className="w-32 h-32 rounded-full border border-white flex items-center justify-center animate-spin-slow text-white">
+                   <div className="w-32 h-32 rounded-full border border-white flex items-center justify-center text-white">
                         <ScanLine size={32} />
                    </div>
               </div>
@@ -336,21 +336,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                   title: "Visual Recognition",
                   desc: "Neural networks identify fabric weaves and garment composition in real-time.",
                   tech: "TFJS / MobileNet",
-                  img: "https://images.unsplash.com/photo-1520697830682-8bc9fde6ca6a?auto=format&fit=crop&q=80&w=800"
+                  img: "https://plus.unsplash.com/premium_photo-1752858050351-f285a913d1ef?auto=format&fit=crop&q=80&w=800"
               },
               { 
                   id: "02",
                   title: "Supply Chain Trace",
                   desc: "Mapping the journey from raw fiber to retail using global registry data.",
                   tech: "Open Supply Hub",
-                  img: "https://images.unsplash.com/photo-1596524430615-b46475ddff6e?auto=format&fit=crop&q=80&w=800"
+                  img: "https://plus.unsplash.com/premium_photo-1681487963628-1a9298789518?auto=format&fit=crop&q=80&w=800"
               },
               { 
                   id: "03",
                   title: "Impact Calculation",
                   desc: "Quantifying water usage, carbon emissions, and microplastic shedding.",
                   tech: "ISO 14040 Lifecycle",
-                  img: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=800"
+                  img: "https://images.unsplash.com/photo-1683884361203-69b7f969e9ff?auto=format&fit=crop&q=80&w=800"
               }
           ].map((item, idx) => (
               <div key={idx} className="group relative border-b border-black/10 dark:border-white/10 h-[60vh] md:h-[40vh] overflow-hidden flex flex-col md:flex-row">
