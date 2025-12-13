@@ -24,6 +24,7 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         darkMode: 'class',
@@ -31,20 +32,22 @@
           extend: {
             fontFamily: {
               sans: ['Space Grotesk', 'sans-serif'],
+              serif: ['Playfair Display', 'serif'],
             },
             colors: {
               cream: '#FDF8E4',
               terracotta: '#D95D39',
               periwinkle: '#ABC4FF',
               ink: '#1A1A1A',
-              sage: '#8A9A5B'
+              sage: '#8A9A5B',
+              klein: '#002FA7', // International Klein Blue
             },
             animation: {
               'scan': 'scan 2s linear infinite',
-              'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
-              'fade-in-down': 'fadeInDown 0.6s ease-out forwards',
-              'spin-slow': 'spin 3s linear infinite',
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'fade-in-down': 'fadeInDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'spin-slow': 'spin 8s linear infinite',
+              'reveal': 'reveal 1.2s cubic-bezier(0.77, 0, 0.175, 1) forwards',
             },
             keyframes: {
               scan: {
@@ -52,12 +55,16 @@
                 '100%': { transform: 'translateY(280px)' }, 
               },
               fadeInUp: {
-                '0%': { opacity: '0', transform: 'translateY(20px)' },
+                '0%': { opacity: '0', transform: 'translateY(40px)' },
                 '100%': { opacity: '1', transform: 'translateY(0)' },
               },
               fadeInDown: {
-                '0%': { opacity: '0', transform: 'translateY(-20px)' },
+                '0%': { opacity: '0', transform: 'translateY(-40px)' },
                 '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              reveal: {
+                '0%': { clipPath: 'inset(100% 0 0 0)' },
+                '100%': { clipPath: 'inset(0 0 0 0)' }
               }
             }
           }
@@ -70,17 +77,8 @@
         color: #1A1A1A;
       }
       .dark body {
-        background-color: #1c1917; /* stone-900 */
+        background-color: #000000;
         color: #FDF8E4;
-      }
-      .loader {
-        border-top-color: #D95D39;
-        -webkit-animation: spinner 1.5s linear infinite;
-        animation: spinner 1.5s linear infinite;
-      }
-      @keyframes spinner {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
       }
       /* Hide scrollbar for cleaner UI */
       .scrollbar-hide::-webkit-scrollbar {
@@ -89,6 +87,10 @@
       .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
+      }
+      /* Smooth Scrolling */
+      html {
+        scroll-behavior: smooth;
       }
     </style>
 <script type="importmap">
