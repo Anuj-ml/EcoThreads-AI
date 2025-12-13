@@ -12,24 +12,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
   return (
     <div className="min-h-screen bg-[#FDF8E4] dark:bg-[#0c0a09] text-[#1A1A1A] dark:text-[#FDF8E4] transition-colors duration-700 font-sans selection:bg-[#D95D39] selection:text-white overflow-x-hidden">
       
-      {/* --- Navigation --- */}
-      <nav className="fixed top-0 left-0 right-0 z-50 mix-blend-difference text-[#FDF8E4]">
+      {/* --- Navigation (Glassy) --- */}
+      <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/70 dark:bg-black/50 backdrop-blur-xl border-b border-white/20 dark:border-white/5 shadow-sm">
         <div className="max-w-[1920px] mx-auto px-6 md:px-12 h-24 flex items-center justify-between">
           <div className="flex items-center gap-3 group cursor-pointer" onClick={toggleTheme}>
-             <Aperture size={28} className="transition-transform duration-700 group-hover:rotate-180" />
-             <span className="text-xl font-bold tracking-tight uppercase hidden md:block">EcoThreads</span>
+             <div className="p-2 bg-black/5 dark:bg-white/10 rounded-full transition-transform duration-700 group-hover:rotate-180">
+                <Aperture size={24} className="text-[#1A1A1A] dark:text-[#FDF8E4]" />
+             </div>
+             <span className="text-xl font-bold tracking-tight uppercase hidden md:block text-[#1A1A1A] dark:text-[#FDF8E4]">EcoThreads</span>
           </div>
 
           <div className="flex items-center gap-12">
-            <div className="hidden md:flex gap-8 text-xs font-bold tracking-widest uppercase">
-              <a href="#manifesto" className="hover:opacity-50 transition-opacity">Manifesto</a>
-              <a href="#intelligence" className="hover:opacity-50 transition-opacity">Intelligence</a>
-              <a href="#impact" className="hover:opacity-50 transition-opacity">Impact</a>
+            <div className="hidden md:flex gap-8 text-xs font-bold tracking-widest uppercase text-[#1A1A1A] dark:text-[#FDF8E4]">
+              <a href="#manifesto" className="hover:text-[#D95D39] transition-colors">Manifesto</a>
+              <a href="#intelligence" className="hover:text-[#D95D39] transition-colors">Intelligence</a>
+              <a href="#impact" className="hover:text-[#D95D39] transition-colors">Impact</a>
             </div>
             
             <button 
               onClick={onStart}
-              className="px-6 py-2 border border-current rounded-full text-xs font-bold uppercase tracking-widest hover:bg-[#FDF8E4] hover:text-black hover:border-[#FDF8E4] transition-all duration-300"
+              className="px-6 py-2.5 bg-[#1A1A1A] dark:bg-[#FDF8E4] text-[#FDF8E4] dark:text-[#1A1A1A] rounded-full text-xs font-bold uppercase tracking-widest hover:scale-105 hover:shadow-lg transition-all duration-300"
             >
               Launch App
             </button>
@@ -41,9 +43,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
       <header className="relative min-h-screen flex flex-col pt-32 px-6 md:px-12 max-w-[1920px] mx-auto">
         
         {/* Main Headline */}
-        <div className="flex-1 flex flex-col justify-center relative z-10">
+        <div className="flex-1 flex flex-col justify-center relative z-10 pointer-events-none">
             <div className="overflow-hidden">
-                <h1 className="text-[12vw] md:text-[9vw] font-medium leading-[0.85] tracking-tighter animate-fade-in-up">
+                <h1 className="text-[12vw] md:text-[9vw] font-medium leading-[0.85] tracking-tighter animate-fade-in-up text-[#1A1A1A] dark:text-[#FDF8E4]">
                     CONSCIOUS
                 </h1>
             </div>
@@ -51,24 +53,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                 <h1 className="text-[12vw] md:text-[9vw] font-medium leading-[0.85] tracking-tighter text-[#D95D39] italic animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
                     CLARITY
                 </h1>
-                <p className="max-w-md text-sm md:text-base font-medium leading-relaxed opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                <p className="max-w-md text-sm md:text-base font-medium leading-relaxed opacity-0 animate-fade-in-up text-[#1A1A1A] dark:text-[#FDF8E4]" style={{ animationDelay: '0.4s' }}>
                     Deconstruct your wardrobe. Decode the materials. <br/>
                     The first AI-powered sustainability auditor for the modern aesthetic.
                 </p>
             </div>
         </div>
 
-        {/* Floating Visual */}
-        <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[50vw] h-[80vh] pointer-events-none hidden md:block mix-blend-multiply dark:mix-blend-difference opacity-80">
-            <img 
-                src="https://images.unsplash.com/photo-1550614000-4b9519e003ac?q=80&w=1500&auto=format&fit=crop" 
-                alt="Fashion Texture" 
-                className="w-full h-full object-cover grayscale contrast-125"
-            />
+        {/* Floating Visual - Updated Image */}
+        <div className="absolute top-0 right-0 h-full w-[50vw] hidden md:block opacity-90 mix-blend-normal z-0">
+             <div className="relative w-full h-full">
+                {/* Gradient masks to blend image seamlessly into background */}
+                <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#FDF8E4]/10 to-[#FDF8E4] dark:to-[#0c0a09] z-10"></div>
+                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[#FDF8E4] dark:from-[#0c0a09] to-transparent z-10"></div>
+                <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#FDF8E4] dark:from-[#0c0a09] to-transparent z-10"></div>
+                
+                <img 
+                    src="https://images.unsplash.com/photo-1509631179647-b84917154012?q=80&w=1500&auto=format&fit=crop" 
+                    alt="Fashion Texture" 
+                    className="w-full h-full object-cover grayscale contrast-125"
+                />
+             </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="h-24 border-t border-black/10 dark:border-white/10 flex items-center justify-between text-xs font-bold uppercase tracking-widest opacity-0 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+        <div className="h-24 border-t border-black/10 dark:border-white/10 flex items-center justify-between text-xs font-bold uppercase tracking-widest opacity-0 animate-fade-in z-10 relative" style={{ animationDelay: '0.6s' }}>
             <div className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-[#D95D39] rounded-full animate-pulse"></span>
                 System Operational
@@ -250,7 +259,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                       ECOTHREADS
                   </h1>
                   <div className="flex gap-8 text-xs font-bold uppercase tracking-widest opacity-40 mt-8 md:mt-0">
-                      <span>© 2024</span>
+                      <span>© 2025</span>
                       <span>Privacy</span>
                       <span>Terms</span>
                   </div>
