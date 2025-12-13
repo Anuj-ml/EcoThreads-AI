@@ -209,28 +209,51 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
           ))}
       </section>
 
-      {/* --- Footer (Retained) --- */}
-      <footer className="bg-[#002FA7] text-white pt-24 pb-12 px-6 md:px-12">
-          <div className="flex flex-col items-center justify-center text-center">
-              <div className="mb-12">
-                   <div className="w-16 h-16 border border-white rounded-full flex items-center justify-center mb-6 mx-auto animate-pulse">
-                       <Aperture size={24} />
-                   </div>
-                   <h2 className="text-4xl md:text-6xl font-serif italic mb-6">Ready to see the unseen?</h2>
-                   <button onClick={onStart} className="bg-white text-[#002FA7] px-12 py-5 rounded-none text-sm font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-colors">
-                       Launch Scanner
-                   </button>
-              </div>
-              
-              <div className="w-full h-px bg-white/20 mb-8"></div>
-              
-              <div className="w-full flex flex-col md:flex-row justify-between items-center text-[10px] font-bold uppercase tracking-widest opacity-60">
-                  <div className="flex gap-6 mb-4 md:mb-0">
-                      <span>Instagram</span>
-                      <span>Twitter</span>
-                      <span>LinkedIn</span>
+      {/* --- Footer --- */}
+      <footer className="bg-[#1A1A1A] text-[#FDF8E4] pt-32 pb-12 px-6 md:px-12">
+          <div className="max-w-[1920px] mx-auto border-t border-white/20 pt-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-24">
+                  <div className="space-y-6">
+                      <span className="text-2xl font-bold tracking-tight uppercase">EcoThreads</span>
+                      <p className="text-sm opacity-60 max-w-xs leading-relaxed">
+                          Redefining fashion consumption through radical transparency and artificial intelligence.
+                      </p>
                   </div>
-                  <span>© 2024 EcoThreads AI. All Rights Reserved.</span>
+                  
+                  <div>
+                      <h4 className="text-xs font-bold uppercase tracking-widest mb-6 text-[#D95D39]">Platform</h4>
+                      <ul className="space-y-4 text-sm font-medium opacity-80">
+                          <li><a href="#" className="hover:text-[#D95D39] transition-colors">Visual Engine</a></li>
+                          <li><a href="#" className="hover:text-[#D95D39] transition-colors">Sustainability Index</a></li>
+                          <li><a href="#" className="hover:text-[#D95D39] transition-colors">API Access</a></li>
+                      </ul>
+                  </div>
+
+                  <div>
+                      <h4 className="text-xs font-bold uppercase tracking-widest mb-6 text-[#D95D39]">Social</h4>
+                      <ul className="space-y-4 text-sm font-medium opacity-80">
+                          <li><a href="#" className="hover:text-[#D95D39] transition-colors">Instagram</a></li>
+                          <li><a href="#" className="hover:text-[#D95D39] transition-colors">Twitter</a></li>
+                          <li><a href="#" className="hover:text-[#D95D39] transition-colors">LinkedIn</a></li>
+                      </ul>
+                  </div>
+
+                  <div className="flex flex-col justify-end">
+                      <button onClick={onStart} className="w-full bg-[#FDF8E4] text-black py-4 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-[#D95D39] hover:text-white transition-colors">
+                          Start Analysis
+                      </button>
+                  </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row justify-between items-end border-t border-white/10 pt-8">
+                  <h1 className="text-[10vw] leading-none font-black text-white/5 select-none pointer-events-none">
+                      ECOTHREADS
+                  </h1>
+                  <div className="flex gap-8 text-xs font-bold uppercase tracking-widest opacity-40 mt-8 md:mt-0">
+                      <span>© 2024</span>
+                      <span>Privacy</span>
+                      <span>Terms</span>
+                  </div>
               </div>
           </div>
       </footer>
