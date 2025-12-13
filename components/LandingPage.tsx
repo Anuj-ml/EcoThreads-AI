@@ -10,22 +10,15 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, toggleTheme }) => {
   const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0);
   const [hasScrolled, setHasScrolled] = useState(false);
 
   // Preloader Simulation
   useEffect(() => {
-    const timer = setInterval(() => {
-        setProgress(prev => {
-            if (prev >= 100) {
-                clearInterval(timer);
-                setTimeout(() => setLoading(false), 800);
-                return 100;
-            }
-            return prev + 1;
-        });
-    }, 30);
-    return () => clearInterval(timer);
+    // Just a timer to simulate loading the "woven" animation
+    const timer = setTimeout(() => {
+        setLoading(false);
+    }, 3500); // 3.5s to let the animation play out
+    return () => clearTimeout(timer);
   }, []);
 
   // Scroll Listener for Navbar
@@ -41,54 +34,82 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
       return (
           <div className="fixed inset-0 bg-[#FDF8E4] dark:bg-[#080808] z-[100] flex flex-col items-center justify-center transition-all duration-500 overflow-hidden">
               <style>{`
-                 @keyframes draw {
-                   0% { stroke-dashoffset: 1000; }
-                   100% { stroke-dashoffset: 0; }
+                 @keyframes weave {
+                   0% { stroke-dashoffset: 100%; opacity: 0; }
+                   10% { opacity: 1; }
+                   100% { stroke-dashoffset: 0; opacity: 1; }
                  }
-                 @keyframes float {
-                   0%, 100% { transform: translateY(0px) rotate(0deg); }
-                   50% { transform: translateY(-10px) rotate(1deg); }
+                 @keyframes fadeInColor {
+                   0% { fill-opacity: 0; }
+                   100% { fill-opacity: 1; }
                  }
-                 .thread-anim {
-                   stroke-dasharray: 1000;
-                   stroke-dashoffset: 1000;
-                   animation: draw 3s ease-in-out forwards;
+                 .woven-text {
+                   fill: transparent;
+                   stroke: #D95D39;
+                   stroke-width: 1.5px;
+                   stroke-dasharray: 400; /* Approximate path length for letters */
+                   stroke-dashoffset: 400;
+                   animation: weave 2.5s cubic-bezier(0.3, 0, 0.2, 1) forwards;
+                   font-family: 'Playfair Display', serif;
+                   font-style: italic;
                  }
-                 .floating-text {
-                   animation: float 4s ease-in-out infinite;
+                 .woven-text-fill {
+                   fill: currentColor;
+                   stroke: none;
+                   fill-opacity: 0;
+                   animation: fadeInColor 1s ease-out forwards 2.2s;
+                 }
+                 .thread-guide {
+                    stroke-dasharray: 10;
+                    animation: dash 20s linear infinite;
+                 }
+                 @keyframes dash {
+                    to { stroke-dashoffset: 1000; }
                  }
                `}</style>
               
-              <div className="relative flex items-center justify-center w-full h-full">
-                  <div className="relative floating-text">
-                      <h1 className="text-6xl md:text-9xl font-serif italic tracking-tighter text-[#1A1A1A] dark:text-[#FDF8E4] relative z-10 opacity-0 animate-fade-in-up" style={{ animationFillMode: 'forwards' }}>
-                          EcoThreads
-                      </h1>
-                      
-                      {/* Thread Animation SVG */}
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[200%] pointer-events-none z-20">
-                           <svg className="w-full h-full" viewBox="0 0 600 200" preserveAspectRatio="none">
-                               {/* Main Thread */}
-                               <path 
-                                 d="M0,100 C150,200 150,0 300,100 C450,200 450,0 600,100" 
-                                 fill="none" 
-                                 stroke="#D95D39" 
-                                 strokeWidth="2" 
-                                 strokeLinecap="round"
-                                 className="thread-anim"
-                               />
-                               {/* Secondary Thread */}
-                               <path 
-                                 d="M600,100 C450,0 450,200 300,100 C150,0 150,200 0,100" 
-                                 fill="none" 
-                                 stroke="#002FA7" 
-                                 strokeWidth="1.5" 
-                                 strokeLinecap="round"
-                                 className="thread-anim"
-                                 style={{ animationDelay: '0.3s' }}
-                               />
-                           </svg>
-                      </div>
+              <div className="relative flex items-center justify-center w-full h-full text-[#1A1A1A] dark:text-[#FDF8E4]">
+                  <div className="relative z-10 w-full max-w-4xl px-4">
+                       <svg className="w-full h-auto" viewBox="0 0 600 150">
+                           {/* Background decorative thread line */}
+                           <path 
+                             d="M-100,75 C100,150 200,0 300,75 C400,150 500,0 700,75" 
+                             fill="none" 
+                             stroke="currentColor" 
+                             strokeWidth="0.5" 
+                             opacity="0.1"
+                             className="thread-guide"
+                           />
+                           
+                           {/* The Woven Text Outline */}
+                           <text 
+                             x="50%" 
+                             y="50%" 
+                             dominantBaseline="middle" 
+                             textAnchor="middle" 
+                             fontSize="90" 
+                             className="woven-text"
+                           >
+                               EcoThreads
+                           </text>
+
+                           {/* The Solid Text Fill (Fades in later) */}
+                           <text 
+                             x="50%" 
+                             y="50%" 
+                             dominantBaseline="middle" 
+                             textAnchor="middle" 
+                             fontSize="90" 
+                             fontFamily="'Playfair Display', serif"
+                             fontStyle="italic"
+                             className="woven-text-fill"
+                           >
+                               EcoThreads
+                           </text>
+                       </svg>
+                       <div className="text-center mt-4 font-sans text-xs font-bold uppercase tracking-[0.3em] opacity-0 animate-fade-in-up" style={{ animationDelay: '2.5s', animationFillMode: 'forwards' }}>
+                           System Initialized
+                       </div>
                   </div>
               </div>
           </div>
@@ -98,27 +119,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
   return (
     <div className="min-h-screen bg-white dark:bg-[#080808] text-black dark:text-white transition-colors duration-700 font-sans selection:bg-[#002FA7] selection:text-white overflow-x-hidden relative">
       
-      {/* --- Glassmorphism Navigation Bar --- */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 px-6 py-4 md:px-12 transition-all duration-500 transform ${hasScrolled ? 'translate-y-0 bg-white/10 dark:bg-black/10 backdrop-blur-md border-b border-white/10 shadow-sm' : '-translate-y-full'}`}>
+      {/* --- Adaptive Navigation Bar --- */}
+      {/* 
+          Logic:
+          - Initial (!hasScrolled): Transparent background, 'mix-blend-difference' to ensure visibility over both the light text section and the dark/image hero section.
+          - Scrolled (hasScrolled): Glassmorphism (blur + semi-transparent bg), standard text colors, sticky behavior.
+      */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 px-6 md:px-12 transition-all duration-500 ease-in-out ${
+          hasScrolled 
+          ? 'py-4 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-black/5 dark:border-white/5 shadow-sm text-black dark:text-white' 
+          : 'py-6 bg-transparent mix-blend-difference text-white' 
+      }`}>
           <div className="flex justify-between items-center max-w-[1920px] mx-auto">
             {/* Brand */}
             <div className="flex items-center gap-4 cursor-pointer group" onClick={toggleTheme}>
-                <div className="relative w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/30 rounded-full group-hover:border-black dark:group-hover:border-white transition-colors">
-                    <div className="w-1.5 h-1.5 bg-black dark:bg-white rounded-full"></div>
+                <div className={`relative w-8 h-8 flex items-center justify-center border rounded-full transition-colors ${hasScrolled ? 'border-black/10 dark:border-white/30 group-hover:border-black dark:group-hover:border-white' : 'border-white/30 group-hover:border-white'}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${hasScrolled ? 'bg-black dark:bg-white' : 'bg-white'}`}></div>
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-sm font-bold uppercase tracking-widest leading-none text-black dark:text-white">EcoThreads</span>
+                    <span className="text-sm font-bold uppercase tracking-widest leading-none">EcoThreads</span>
                 </div>
             </div>
 
             {/* Menu / Actions */}
             <div className="flex items-center gap-6">
-                <button onClick={toggleTheme} className="hidden md:block text-[10px] font-bold uppercase tracking-widest text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors">
+                <button onClick={toggleTheme} className={`hidden md:block text-[10px] font-bold uppercase tracking-widest transition-colors ${hasScrolled ? 'text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white' : 'text-white/80 hover:text-white'}`}>
                     {darkMode ? 'Light' : 'Dark'}
                 </button>
                 <button 
                     onClick={onStart}
-                    className="flex items-center gap-3 px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-full hover:bg-[#D95D39] dark:hover:bg-[#D95D39] hover:text-white transition-all duration-300 group"
+                    className={`flex items-center gap-3 px-6 py-2 rounded-full transition-all duration-300 group ${
+                        hasScrolled 
+                        ? 'bg-black dark:bg-white text-white dark:text-black hover:bg-[#D95D39] dark:hover:bg-[#D95D39] hover:text-white' 
+                        : 'bg-white text-black hover:bg-[#D95D39] hover:text-white'
+                    }`}
                 >
                     <span className="text-[10px] font-bold uppercase tracking-widest">Start Analysis</span>
                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -163,7 +197,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
               
               {/* Center Icon: Fades out on hover */}
               <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                   <div className="w-32 h-32 rounded-full border border-white flex items-center justify-center text-white">
+                   <div className="w-32 h-32 rounded-full border border-white flex items-center justify-center animate-spin-slow text-white">
                         <ScanLine size={32} />
                    </div>
               </div>
@@ -302,21 +336,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                   title: "Visual Recognition",
                   desc: "Neural networks identify fabric weaves and garment composition in real-time.",
                   tech: "TFJS / MobileNet",
-                  img: "https://tse4.mm.bing.net/th/id/OIP.fXex_Kwx6O0sFxqAy7M8DQHaEK?auto=format&fit=crop&q=80&w=800"
+                  img: "https://images.unsplash.com/photo-1520697830682-8bc9fde6ca6a?auto=format&fit=crop&q=80&w=800"
               },
               { 
                   id: "02",
                   title: "Supply Chain Trace",
                   desc: "Mapping the journey from raw fiber to retail using global registry data.",
                   tech: "Open Supply Hub",
-                  img: "https://plus.unsplash.com/premium_photo-1681487963628-1a9298789518?auto=format&fit=crop&q=80&w=800"
+                  img: "https://images.unsplash.com/photo-1596524430615-b46475ddff6e?auto=format&fit=crop&q=80&w=800"
               },
               { 
                   id: "03",
                   title: "Impact Calculation",
                   desc: "Quantifying water usage, carbon emissions, and microplastic shedding.",
                   tech: "ISO 14040 Lifecycle",
-                  img: "https://images.unsplash.com/photo-1683884361203-69b7f969e9ff?auto=format&fit=crop&q=80&w=800"
+                  img: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=800"
               }
           ].map((item, idx) => (
               <div key={idx} className="group relative border-b border-black/10 dark:border-white/10 h-[60vh] md:h-[40vh] overflow-hidden flex flex-col md:flex-row">
