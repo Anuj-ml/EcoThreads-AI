@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Leaf, ScanLine, Globe, Sparkles, Footprints, ShieldCheck, Zap, Moon, Sun, ArrowUpRight, Aperture, Code, Database, Microscope, Menu, X } from 'lucide-react';
+import { ArrowRight, Leaf, ScanLine, Globe, Sparkles, Footprints, ShieldCheck, Zap, Moon, Sun, ArrowUpRight, Aperture, Code, Database, Microscope, Menu, X, Smartphone, CheckCircle2 } from 'lucide-react';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -11,6 +11,7 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, toggleTheme }) => {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [hasScrolled, setHasScrolled] = useState(false);
 
   // Preloader Simulation
   useEffect(() => {
@@ -25,6 +26,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
         });
     }, 50);
     return () => clearInterval(timer);
+  }, []);
+
+  // Scroll Listener for Navbar
+  useEffect(() => {
+      const handleScroll = () => {
+          setHasScrolled(window.scrollY > 50);
+      };
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   if (loading) {
@@ -54,30 +64,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
   return (
     <div className="min-h-screen bg-white dark:bg-[#080808] text-black dark:text-white transition-colors duration-700 font-sans selection:bg-[#002FA7] selection:text-white overflow-x-hidden relative">
       
-      {/* --- Navigation Bar --- */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-6 md:px-12 md:py-8 flex justify-between items-center mix-blend-difference text-white">
-          {/* Brand */}
-          <div className="flex items-center gap-4 cursor-pointer group" onClick={toggleTheme}>
-               <div className="relative w-8 h-8 flex items-center justify-center border border-white/30 rounded-full group-hover:border-white transition-colors">
-                   <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-               </div>
-               <div className="flex flex-col">
-                   <span className="text-sm font-bold uppercase tracking-widest leading-none">EcoThreads</span>
-               </div>
-          </div>
+      {/* --- Glassmorphism Navigation Bar --- */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 px-6 py-4 md:px-12 transition-all duration-500 transform ${hasScrolled ? 'translate-y-0 bg-white/10 dark:bg-black/10 backdrop-blur-md border-b border-white/10 shadow-sm' : '-translate-y-full'}`}>
+          <div className="flex justify-between items-center max-w-[1920px] mx-auto">
+            {/* Brand */}
+            <div className="flex items-center gap-4 cursor-pointer group" onClick={toggleTheme}>
+                <div className="relative w-8 h-8 flex items-center justify-center border border-black/10 dark:border-white/30 rounded-full group-hover:border-black dark:group-hover:border-white transition-colors">
+                    <div className="w-1.5 h-1.5 bg-black dark:bg-white rounded-full"></div>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-sm font-bold uppercase tracking-widest leading-none text-black dark:text-white">EcoThreads</span>
+                </div>
+            </div>
 
-          {/* Menu / Actions */}
-          <div className="flex items-center gap-6">
-              <button onClick={toggleTheme} className="hidden md:block text-[10px] font-bold uppercase tracking-widest hover:text-gray-300 transition-colors">
-                  {darkMode ? 'Light' : 'Dark'}
-              </button>
-              <button 
-                  onClick={onStart}
-                  className="flex items-center gap-3 px-6 py-2 border border-white/30 rounded-full hover:bg-white hover:text-black hover:border-white transition-all duration-300 group"
-              >
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Start Analysis</span>
-                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-              </button>
+            {/* Menu / Actions */}
+            <div className="flex items-center gap-6">
+                <button onClick={toggleTheme} className="hidden md:block text-[10px] font-bold uppercase tracking-widest text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors">
+                    {darkMode ? 'Light' : 'Dark'}
+                </button>
+                <button 
+                    onClick={onStart}
+                    className="flex items-center gap-3 px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-full hover:bg-[#D95D39] dark:hover:bg-[#D95D39] hover:text-white transition-all duration-300 group"
+                >
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Start Analysis</span>
+                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+            </div>
           </div>
       </nav>
 
@@ -105,14 +117,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
 
           {/* Right: Visual */}
           <div className="w-full md:w-1/2 h-1/2 md:h-full relative overflow-hidden group">
-              <div className="absolute inset-0 bg-[#002FA7] mix-blend-color z-10 opacity-0 group-hover:opacity-50 transition-opacity duration-700"></div>
-              {/* Updated Hero Image */}
+              {/* Overlay: Fades OUT on hover to reveal true colors */}
+              <div className="absolute inset-0 bg-[#002FA7] mix-blend-color z-10 opacity-60 group-hover:opacity-0 transition-opacity duration-700 ease-in-out"></div>
+              
+              {/* Hero Image: Grayscale by default, Full Color on hover */}
               <img 
                 src="https://images.unsplash.com/photo-1643286131725-5e0ad3b3ca02?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fHN1c3RhaW5hYmxlJTIwZmFzaGlvbnxlbnwwfHwwfHx8MA%3D%3D" 
-                className="w-full h-full object-cover grayscale contrast-125 group-hover:scale-105 transition-transform duration-[2s]"
+                className="w-full h-full object-cover grayscale group-hover:grayscale-0 contrast-125 group-hover:scale-105 transition-all duration-700 ease-in-out"
                 alt="Sustainable Fashion"
               />
-              <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+              
+              {/* Center Icon: Fades out on hover */}
+              <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
                    <div className="w-32 h-32 rounded-full border border-white flex items-center justify-center animate-spin-slow text-white">
                         <ScanLine size={32} />
                    </div>
@@ -149,6 +165,96 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                       <p>
                           EcoThreads utilizes edge computing and generative AI to perform forensic audits on your garments instantly. No labs. No delays. Just truth.
                       </p>
+                  </div>
+              </div>
+          </div>
+      </section>
+
+      {/* --- App Interface Preview Section --- */}
+      <section className="py-24 px-6 bg-gray-50 dark:bg-[#111] border-y border-black/5 dark:border-white/5 overflow-hidden">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-20">
+              
+              {/* Text Side */}
+              <div className="w-full md:w-1/2 space-y-8 order-2 md:order-1">
+                   <div>
+                      <span className="text-[#D95D39] text-xs font-bold uppercase tracking-widest block mb-2">02 / Interface</span>
+                      <h2 className="text-4xl md:text-5xl font-serif italic text-black dark:text-white mb-6">
+                          Pocket Intelligence.
+                      </h2>
+                      <p className="text-sm opacity-60 leading-relaxed max-w-md">
+                          The EcoThreads dashboard translates complex lifecycle data into a single, verified Eco-Score. Access carbon footprint metrics, water savings, and actionable care guides in seconds.
+                      </p>
+                   </div>
+                   
+                   <div className="grid grid-cols-2 gap-6">
+                       <div className="p-4 border border-black/5 dark:border-white/5 rounded-xl bg-white dark:bg-black/20">
+                           <Zap className="w-6 h-6 text-[#002FA7] mb-3" />
+                           <h4 className="font-bold text-sm">Instant Audit</h4>
+                           <p className="text-xs opacity-50 mt-1">Real-time analysis via Edge AI.</p>
+                       </div>
+                       <div className="p-4 border border-black/5 dark:border-white/5 rounded-xl bg-white dark:bg-black/20">
+                           <ShieldCheck className="w-6 h-6 text-[#D95D39] mb-3" />
+                           <h4 className="font-bold text-sm">Verified Data</h4>
+                           <p className="text-xs opacity-50 mt-1">Cross-referenced with global registries.</p>
+                       </div>
+                   </div>
+
+                   <button onClick={onStart} className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest hover:text-[#002FA7] transition-colors group">
+                       Try the Demo <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>
+                   </button>
+              </div>
+
+              {/* Phone Mockup Side */}
+              <div className="w-full md:w-1/2 flex justify-center order-1 md:order-2">
+                  <div className="relative w-[300px] h-[600px] bg-[#1A1A1A] rounded-[3rem] border-[8px] border-[#2A2A2A] shadow-2xl overflow-hidden transform rotate-[-5deg] hover:rotate-0 transition-transform duration-500">
+                      {/* Notch */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#2A2A2A] rounded-b-xl z-20"></div>
+                      
+                      {/* Screen Content Mockup */}
+                      <div className="w-full h-full bg-[#FDF8E4] dark:bg-[#080808] flex flex-col relative">
+                          {/* Mock Image Header */}
+                          <div className="h-48 bg-gray-200 relative">
+                              <img src="https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&auto=format&fit=crop&q=60" className="w-full h-full object-cover opacity-80" alt="Mock Scan" />
+                              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-20 h-20 bg-white dark:bg-stone-900 rounded-full flex items-center justify-center shadow-lg border-4 border-[#FDF8E4] dark:border-[#080808]">
+                                  <div className="relative w-full h-full flex items-center justify-center">
+                                      <svg className="w-full h-full p-1 transform -rotate-90" viewBox="0 0 100 100">
+                                          <circle cx="50" cy="50" r="45" stroke="#eee" strokeWidth="6" fill="transparent" />
+                                          <circle cx="50" cy="50" r="45" stroke="#8A9A5B" strokeWidth="6" fill="transparent" strokeDasharray="283" strokeDashoffset="30" strokeLinecap="round" />
+                                      </svg>
+                                      <span className="absolute text-xl font-black text-black dark:text-white">92</span>
+                                  </div>
+                              </div>
+                          </div>
+                          
+                          {/* Mock Body */}
+                          <div className="p-6 pt-10 text-center flex-1">
+                              <h3 className="font-serif italic text-2xl mb-1 text-black dark:text-white">Organic Cotton Tee</h3>
+                              <p className="text-[10px] uppercase font-bold text-gray-400 mb-6">Patagonia • Verified Ethical</p>
+                              
+                              <div className="space-y-3 text-left">
+                                  <div className="bg-white dark:bg-stone-900 p-3 rounded-xl border border-black/5 flex items-center gap-3">
+                                      <Leaf size={16} className="text-[#8A9A5B]" />
+                                      <div>
+                                          <div className="text-xs font-bold text-black dark:text-white">0.8kg CO2e</div>
+                                          <div className="text-[8px] text-gray-400 uppercase">Carbon Footprint</div>
+                                      </div>
+                                  </div>
+                                  <div className="bg-white dark:bg-stone-900 p-3 rounded-xl border border-black/5 flex items-center gap-3">
+                                      <Globe size={16} className="text-[#002FA7]" />
+                                      <div>
+                                          <div className="text-xs font-bold text-black dark:text-white">500 Liters</div>
+                                          <div className="text-[8px] text-gray-400 uppercase">Water Saved</div>
+                                      </div>
+                                  </div>
+                              </div>
+
+                              <div className="mt-8">
+                                  <button className="w-full py-3 bg-black dark:bg-white text-white dark:text-black rounded-full text-xs font-bold uppercase">
+                                      View Full Report
+                                  </button>
+                              </div>
+                          </div>
+                      </div>
                   </div>
               </div>
           </div>
@@ -247,7 +353,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
                       ECOTHREADS
                   </h1>
                   <div className="flex gap-8 text-xs font-bold uppercase tracking-widest opacity-40 mt-8 md:mt-0">
-                      <span>© 2024</span>
+                      <span>© 2025</span>
                       <span>Privacy</span>
                       <span>Terms</span>
                   </div>
