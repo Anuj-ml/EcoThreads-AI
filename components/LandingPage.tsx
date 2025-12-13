@@ -356,7 +356,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
               <div key={idx} className="group relative border-b border-black/10 dark:border-white/10 h-[60vh] md:h-[40vh] overflow-hidden flex flex-col md:flex-row">
                   {/* Hover Image Background */}
                   <div className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                      <img src={item.img} className="w-full h-full object-cover grayscale opacity-20" alt="" />
+                      <img src={item.img} className="w-full h-full object-cover opacity-20" alt="" />
                   </div>
 
                   <div className="relative z-10 w-full md:w-1/3 p-8 md:p-12 border-b md:border-b-0 md:border-r border-black/10 dark:border-white/10 flex flex-col justify-between bg-white/80 dark:bg-black/80 backdrop-blur-sm md:bg-transparent transition-colors group-hover:text-[#002FA7]">
