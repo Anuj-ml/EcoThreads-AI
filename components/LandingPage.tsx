@@ -109,11 +109,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
           {/* Right: Visual */}
           <div className="w-full md:w-1/2 h-1/2 md:h-full relative overflow-hidden group">
               <div className="absolute inset-0 bg-[#002FA7] mix-blend-color z-10 opacity-0 group-hover:opacity-50 transition-opacity duration-700"></div>
-              {/* Updated Hero Image */}
+              {/* Updated Hero Image: Detailed Fabric Texture for "Material Analysis" aesthetic */}
               <img 
-                src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=2000&auto=format&fit=crop" 
+                src="https://images.unsplash.com/photo-1574201635302-388dd92a4c3f?q=80&w=2000&auto=format&fit=crop" 
                 className="w-full h-full object-cover grayscale contrast-125 group-hover:scale-105 transition-transform duration-[2s]"
-                alt="High Fashion Model"
+                alt="Raw Linen Texture Analysis"
               />
               <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                    <div className="w-32 h-32 rounded-full border border-white flex items-center justify-center animate-spin-slow text-white">
