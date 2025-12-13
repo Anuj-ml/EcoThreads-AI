@@ -23,25 +23,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
             }
             return prev + Math.floor(Math.random() * 10) + 1;
         });
-    }, 100);
+    }, 50);
     return () => clearInterval(timer);
   }, []);
 
   if (loading) {
       return (
-          <div className="fixed inset-0 bg-[#FDF8E4] dark:bg-[#080808] z-[100] flex items-center justify-center transition-all duration-500">
-              <div className="flex flex-col items-center gap-6">
-                  <div className="relative w-24 h-24">
-                      <div className="absolute inset-0 border-4 border-gray-200 dark:border-white/10 rounded-full"></div>
+          <div className="fixed inset-0 bg-[#FDF8E4] dark:bg-[#080808] z-[100] flex flex-col items-center justify-center transition-all duration-500">
+              <div className="flex flex-col items-center gap-8 animate-fade-in-up">
+                  <h1 className="text-5xl md:text-7xl font-serif italic tracking-tighter text-[#1A1A1A] dark:text-[#FDF8E4]">
+                      EcoThreads
+                  </h1>
+                  
+                  <div className="w-64 h-[1px] bg-black/10 dark:bg-white/10 relative overflow-hidden">
                       <div 
-                        className="absolute inset-0 border-4 border-t-[#002FA7] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"
+                        className="absolute inset-y-0 left-0 bg-[#D95D39] transition-all duration-100 ease-linear"
+                        style={{ width: `${progress}%` }}
                       ></div>
-                      <div className="absolute inset-0 flex items-center justify-center font-mono text-sm font-bold text-[#002FA7] dark:text-white">
-                          {progress}%
-                      </div>
                   </div>
-                  <div className="font-mono text-xs uppercase tracking-[0.3em] animate-pulse text-black dark:text-white">
-                      Initializing
+                  
+                  <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
+                      <span>System Loading</span>
+                      <span>{progress}%</span>
                   </div>
               </div>
           </div>
@@ -51,38 +54,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
   return (
     <div className="min-h-screen bg-white dark:bg-[#080808] text-black dark:text-white transition-colors duration-700 font-sans selection:bg-[#002FA7] selection:text-white overflow-x-hidden relative">
       
-      {/* --- Corner Navigation (Fixed) --- */}
-      <div className="fixed inset-0 pointer-events-none z-50 p-6 md:p-8 flex flex-col justify-between text-xs font-bold uppercase tracking-widest mix-blend-difference text-white">
-          {/* Top Left */}
-          <div className="flex justify-between items-start">
-              <div className="flex flex-col gap-1 pointer-events-auto cursor-pointer group" onClick={toggleTheme}>
-                  <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-current rounded-full group-hover:scale-150 transition-transform"></div>
-                      <span>EcoThreads™</span>
-                  </div>
-                  <span className="opacity-50 group-hover:opacity-100 transition-opacity">AI Auditor V2.5</span>
-              </div>
-              
-              {/* Top Right */}
-              <button onClick={onStart} className="pointer-events-auto hover:text-[#002FA7] transition-colors flex items-center gap-2 group">
-                  <span className="opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300">Start System</span>
-                  [ Enter ]
+      {/* --- Navigation Bar --- */}
+      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-6 md:px-12 md:py-8 flex justify-between items-center mix-blend-difference text-white">
+          {/* Brand */}
+          <div className="flex items-center gap-4 cursor-pointer group" onClick={toggleTheme}>
+               <div className="relative w-8 h-8 flex items-center justify-center border border-white/30 rounded-full group-hover:border-white transition-colors">
+                   <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+               </div>
+               <div className="flex flex-col">
+                   <span className="text-sm font-bold uppercase tracking-widest leading-none">EcoThreads</span>
+               </div>
+          </div>
+
+          {/* Menu / Actions */}
+          <div className="flex items-center gap-6">
+              <button onClick={toggleTheme} className="hidden md:block text-[10px] font-bold uppercase tracking-widest hover:text-gray-300 transition-colors">
+                  {darkMode ? 'Light' : 'Dark'}
+              </button>
+              <button 
+                  onClick={onStart}
+                  className="flex items-center gap-3 px-6 py-2 border border-white/30 rounded-full hover:bg-white hover:text-black hover:border-white transition-all duration-300 group"
+              >
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Start Analysis</span>
+                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
               </button>
           </div>
-
-          {/* Bottom Left - Cleaned up */}
-          <div className="flex justify-between items-end">
-             <div className="flex flex-col gap-1">
-                 {/* Removed Time/Location for cleaner look */}
-             </div>
-
-             {/* Bottom Right */}
-             <div className="pointer-events-auto flex flex-col items-end gap-1">
-                 <a href="#intelligence" className="hover:underline">Intelligence</a>
-                 <a href="#manifesto" className="hover:underline">Manifesto</a>
-             </div>
-          </div>
-      </div>
+      </nav>
 
       {/* --- Hero Section --- */}
       <section className="relative h-screen w-full flex flex-col md:flex-row">
@@ -109,11 +106,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, darkMode, tog
           {/* Right: Visual */}
           <div className="w-full md:w-1/2 h-1/2 md:h-full relative overflow-hidden group">
               <div className="absolute inset-0 bg-[#002FA7] mix-blend-color z-10 opacity-0 group-hover:opacity-50 transition-opacity duration-700"></div>
-              {/* Updated Hero Image: Detailed Fabric Texture for "Material Analysis" aesthetic */}
+              {/* Updated Hero Image */}
               <img 
-                src="https://images.unsplash.com/photo-1574201635302-388dd92a4c3f?q=80&w=2000&auto=format&fit=crop" 
+                src="https://images.unsplash.com/photo-1643286131725-5e0ad3b3ca02?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fHN1c3RhaW5hYmxlJTIwZmFzaGlvbnxlbnwwfHwwfHx8MA%3D%3D" 
                 className="w-full h-full object-cover grayscale contrast-125 group-hover:scale-105 transition-transform duration-[2s]"
-                alt="Raw Linen Texture Analysis"
+                alt="Sustainable Fashion"
               />
               <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                    <div className="w-32 h-32 rounded-full border border-white flex items-center justify-center animate-spin-slow text-white">
